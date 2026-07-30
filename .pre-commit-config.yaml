@@ -1,0 +1,35 @@
+# ruff is the only formatter and the only import sorter. Running black
+# alongside ruff-format deadlocked: each reformatted what the other had just
+# written, and no commit could settle. isort was likewise redundant with ruff's
+# `I` rules. See the `select` list in pyproject.toml.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.5
+    hooks:
+      # Lint, including import sorting (rule set `I`).
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+
+  - repo: local
+    hooks:
+      # Same code as pre-commit-hooks' own check-added-large-files, invoked as
+      # a module instead of its console-script entry point: on Windows, the
+      # pip-generated `check-added-large-files.exe` shim got blocked by an
+      # Application Control policy (WinError 4551). Its siblings in the same
+      # environment weren't, so the block is per-file, not per-environment.
+      #
+      # The 500 KB limit keeps stray pieces of output/ (email CSVs, compressed
+      # bodies) out of the repo. uv.lock is legitimately larger than that.
+      - id: check-added-large-files
+        name: check for added large files
+        entry: python -m pre_commit_hooks.check_added_large_files
+        language: system
+        exclude: ^uv\.lock$

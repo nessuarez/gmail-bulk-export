@@ -1,0 +1,12 @@
+{
+  "batch_size": 25,
+  "payload_batch_size": 20,
+  "output_directory": "./output",
+  "log_dir": "logs",
+  "max_workers": 2,
+  "retry_attempts": 8,
+  "retry_wait_min": 4,
+  "retry_wait_max": 64,
+  "messages_per_second": 40,
+  "detailed_labels": ["INBOX", "SENT", "UNREAD", "CHAT"]
+}

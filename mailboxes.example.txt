@@ -1,0 +1,17 @@
+# Mailboxes to download, one per line. Lines starting with # are ignored.
+#
+# Copy this file to mailboxes.txt and put in real addresses. mailboxes*.txt
+# is in .gitignore because it typically contains real addresses; this
+# template isn't.
+#
+# Each mailbox needs the service account to have delegation over it. Check
+# before a long download with:
+#
+#   python -m scripts.download_metadata --mailboxes-file mailboxes.txt \
+#       --start 2024-01 --end 2024-01 --dry-run
+#
+# Prints a ✓ or ✗ per mailbox. An inaccessible mailbox is skipped, not fatal
+# to the run.
+
+user1@example.com
+user2@example.com

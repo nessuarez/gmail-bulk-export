@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: tests (py${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          # The codebase carries Windows-specific workarounds (UTF-8 console
+          # reconfiguration, path handling), and Windows is where it actually
+          # runs. One job is enough to keep them honest.
+          - os: windows-latest
+            python-version: "3.13"
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # --locked fails if uv.lock has drifted from pyproject.toml, so a
+      # dependency change without a re-lock cannot reach main.
+      - run: uv sync --locked
+
+      # No test touches the network or needs credentials, so no secrets here.
+      - run: uv run pytest
+
+  lint:
+    name: format and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run pre-commit run --all-files --show-diff-on-failure
+
+  packaging:
+    name: installable wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # This job exists because the project shipped a broken wheel for a long
+      # time: scripts/ was absent from `packages`, and config.py, config_logger.py
+      # and data_transforms.py were absent from `py-modules`, so an installed
+      # copy raised ModuleNotFoundError on its first import. Nobody noticed
+      # because development only ever used an editable install.
+      - name: Build the wheel and import it from a clean environment
+        run: |
+          uv build --wheel
+          uv venv /tmp/clean
+          VIRTUAL_ENV=/tmp/clean uv pip install dist/*.whl
+          /tmp/clean/bin/python -c "import auth.service, cli.main, core.rate_limit, scripts.download_metadata, scripts.progress_report, config, config_logger, data_transforms"
+          /tmp/clean/bin/gmail-bulk-export --help > /dev/null

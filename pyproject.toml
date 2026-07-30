@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gmail-bulk-export"
+version = "0.1.0"
+description = "CLI toolkit to extract Gmail messages in bulk using the Gmail API with service-account impersonation"
+readme = "README.md"
+# The CLI uses PEP 604 unions (`str | None`) in evaluated function signatures,
+# so it genuinely cannot import below 3.10. Development runs on 3.13.
+requires-python = ">=3.10"
+authors = [
+  { name = "Nestor Suarez Alfonso", email = "nestor.suarez.alfonso@gmail.com" },
+]
+license = { text = "MIT" }
+
+dependencies = [
+  "google-api-python-client>=2.80.0",
+  "google-auth>=2.20.0",
+  "google-auth-oauthlib>=1.0.0",
+  "google-auth-httplib2>=0.1.1",
+  "python-dotenv>=0.21.0",
+  "tqdm>=4.64.0",
+  "tenacity>=8.2.0",
+  "python-dateutil>=2.8.2",
+  "pandas>=1.5.0",
+  "html2text>=2020.1.16",
+  "pyarrow>=14.0.0",
+]
+
+[dependency-groups]
+# `uv sync` installs the project plus this group by default.
+dev = [
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+  "ruff>=0.1.0",
+  "mypy>=1.0",
+  "pre-commit>=3.0",
+  # Invoked as a module from a local hook, not via its console script: see the
+  # note in .pre-commit-config.yaml.
+  "pre-commit-hooks>=4.4",
+]
+
+[project.scripts]
+gmail-bulk-export = "cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/<your-username>/gmail-bulk-export"
+Repository = "https://github.com/<your-username>/gmail-bulk-export.git"
+Issues = "https://github.com/<your-username>/gmail-bulk-export/issues"
+
+[tool.setuptools]
+# scripts/ holds the orchestrators that are the real entry point; leaving it out
+# meant a non-editable `pip install .` shipped a package you could not run.
+packages = ["auth", "cli", "core", "scripts"]
+# Top-level modules, not packages: every other module does `from config import
+# ...` at import time, so omitting these made an installed copy raise
+# ModuleNotFoundError on the very first import.
+py-modules = ["config", "config_logger", "data_transforms"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+# Exploratory notebook cells legitimately carry long pandas chains; enforcing
+# the source line length there is noise. Source files keep the full lint.
+extend-exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.mypy]
+# mypy is an opt-in tool here, not a gate: it is not in the hooks or in CI.
+# `uv run mypy auth cli core scripts config.py` currently reports ~15 findings,
+# mostly missing annotations on empty collections. Wiring it into CI means
+# clearing those first — a deliberate piece of work, not a config flip.
+python_version = "3.10"
+warn_unused_configs = true
+# Neither pandas nor tqdm ships stubs here, and their absence buried the real
+# findings under import noise.
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "--cov=auth --cov=cli --cov=core --cov=scripts"
