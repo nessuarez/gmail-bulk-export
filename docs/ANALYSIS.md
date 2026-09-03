@@ -92,39 +92,28 @@ This is also a good fit if you'd rather keep just the CSV: DuckDB can query a
 CSV directly too (`FROM 'output/emails_with_mailboxes.csv'`), just without
 the pre-resolved types.
 
-## Option 2 — SQLite + full-text search (FTS5)
+## Option 2 — the built-in search index (SQLite + FTS5)
 
-If what you actually want is to **search** years of subject lines and
-snippets rather than run aggregate analytics, SQLite's FTS5 extension is a
-good fit — no server, ships with Python's standard library, and gives you
-fast text search that a CSV/pandas workflow doesn't.
+If what you actually want is to **search** years of subject lines and snippets
+rather than run aggregate analytics, this is already built in — you do not have
+to assemble it:
 
-```python
-import ast
-import sqlite3
-
-import pandas as pd
-
-df = pd.read_csv("output/emails_with_mailboxes.csv", dtype=str)
-
-con = sqlite3.connect("mail_search.db")
-con.execute("""
-    CREATE VIRTUAL TABLE IF NOT EXISTS messages
-    USING fts5(id UNINDEXED, mailbox UNINDEXED, subject, snippet)
-""")
-con.executemany(
-    "INSERT INTO messages (id, mailbox, subject, snippet) VALUES (?, ?, ?, ?)",
-    df[["id", "mailbox", "subject", "snippet"]].itertuples(index=False, name=None),
-)
-con.commit()
-
-# search
-for row in con.execute(
-    "SELECT mailbox, subject FROM messages WHERE messages MATCH ? LIMIT 20",
-    ("invoice OR receipt",),
-):
-    print(row)
+```bash
+python -m gmail_bulk_export.core.load_metadatas --also-parquet
+python -m gmail_bulk_export.scripts.build_search_index
+python -m gmail_bulk_export.scripts.search_emails -q "invoice" --since 2024 --breakdown month
 ```
+
+It is SQLite with an external-content FTS5 table, so no server and no
+dependency beyond the standard library. Over ~970,000 messages it builds in
+about 1.4 minutes and answers in ~0.2 s. Compared with rolling your own it also
+gives you accent-insensitive matching (`peticion` finds `petición`), label
+names resolved per mailbox, date/domain/attachment filters, CSV/JSON export and
+a bridge to the body downloader. Full option list in
+[RUNBOOK.md § 8 bis](RUNBOOK.md#8-bis-finding-specific-emails), or `--help`.
+
+Reach for a hand-rolled index only if you need something the built-in one does
+not model — a different tokenizer, or text that is not in the metadata.
 
 ## Option 3 — a data-quality pass before you trust a big export
 

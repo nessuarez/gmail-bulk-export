@@ -142,6 +142,23 @@ output/
         └── <msg_id>_attachments.gz  # attachments
 ```
 
+## Searching what you exported
+
+Finding a specific email does not need the analysis path: the toolkit ships a
+SQLite + FTS5 index over the metadata.
+
+```bash
+python -m gmail_bulk_export.core.load_metadatas --also-parquet
+python -m gmail_bulk_export.scripts.build_search_index          # ~1.4 min for 970k messages
+python -m gmail_bulk_export.scripts.search_emails -q "hotel madrid" --since 2023-01
+```
+
+Text search is accent- and case-insensitive; you can filter by date range,
+mailbox, label name, sender domain, thread or attachment, count and group with
+`--breakdown`, and export the hits to CSV/JSON. `--for-payloads` turns a search
+into the input of the body downloader. Full reference in
+[docs/RUNBOOK.md § 8 bis](docs/RUNBOOK.md#8-bis-finding-specific-emails).
+
 ## What to do with the exported data
 
 [docs/ANALYSIS.md](docs/ANALYSIS.md) covers a few concrete options beyond

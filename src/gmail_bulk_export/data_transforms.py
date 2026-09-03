@@ -66,6 +66,12 @@ def _coerce_list(value):
     """Parses a Python-list repr into a list, and passes real lists through."""
     if isinstance(value, (list, tuple)):
         return list(value)
+    # A list column read back from Parquet arrives as a numpy array, which is
+    # neither a list nor a str: without this it fell through to the `[]` below
+    # and silently emptied labelIds on the typed round-trip.
+    if not isinstance(value, str) and hasattr(value, "tolist"):
+        converted = value.tolist()
+        return list(converted) if isinstance(converted, (list, tuple)) else []
     if isinstance(value, str):
         try:
             parsed = ast.literal_eval(value.strip())

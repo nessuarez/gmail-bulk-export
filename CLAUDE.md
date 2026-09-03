@@ -12,6 +12,7 @@ unusual decision in the code traces back to that; each one is explained in
 | If you're going to... | Start with |
 | --- | --- |
 | Run a download | [docs/RUNBOOK.md](docs/RUNBOOK.md) — the real operational guide |
+| Find emails in what was downloaded | [docs/RUNBOOK.md § 8 bis](docs/RUNBOOK.md#8-bis-finding-specific-emails) |
 | Touch authentication | [auth/CLAUDE.md](src/gmail_bulk_export/auth/CLAUDE.md) |
 | Touch a `gmail-bulk-export` subcommand | [cli/CLAUDE.md](src/gmail_bulk_export/cli/CLAUDE.md) |
 | Touch I/O, checkpoints, rate limiting, CSV schema | [core/CLAUDE.md](src/gmail_bulk_export/core/CLAUDE.md) |
