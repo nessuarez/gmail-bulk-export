@@ -21,8 +21,8 @@ activated.
 Quick check:
 
 ```bash
-python -m cli.main token                    # validates the credentials file
-python -m scripts.download_metadata --mailboxes-file mailboxes.txt \
+python -m gmail_bulk_export.cli.main token                    # validates the credentials file
+python -m gmail_bulk_export.scripts.download_metadata --mailboxes-file mailboxes.txt \
     --start 2024-01 --end 2024-01 --dry-run   # validates access to each mailbox
 ```
 
@@ -85,7 +85,7 @@ chunks take as long as the hundreds before them.
 > To change the destination, either of these works:
 >
 > ```bash
-> OUTPUT_DIR=/other/path python -m scripts.download_metadata ...
+> OUTPUT_DIR=/other/path python -m gmail_bulk_export.scripts.download_metadata ...
 > gmail-bulk-export --output-dir /other/path metadata --username ...
 > ```
 >
@@ -112,7 +112,7 @@ with a single command.
 ## 3. Phases 1 and 2 — Labels and metadata
 
 ```bash
-python -m scripts.download_metadata \
+python -m gmail_bulk_export.scripts.download_metadata \
     --mailboxes-file mailboxes.txt \
     --start 2016-01 --end 2025-12 \
     --priority 2024,2023,2025
@@ -173,9 +173,9 @@ emails**.
 ## 4. Seeing what's missing
 
 ```bash
-python -m scripts.progress_report                  # mailbox × month grid
-python -m scripts.progress_report --detail          # + a list of what's pending
-python -m scripts.progress_report --start 2024-01 --end 2024-12
+python -m gmail_bulk_export.scripts.progress_report                  # mailbox × month grid
+python -m gmail_bulk_export.scripts.progress_report --detail          # + a list of what's pending
+python -m gmail_bulk_export.scripts.progress_report --start 2024-01 --end 2024-12
 ```
 
 ```
@@ -208,7 +208,7 @@ skipped.
 ## 5. Consolidation
 
 ```bash
-python -m core.load_metadatas --mailboxes-file mailboxes.txt --also-parquet
+python -m gmail_bulk_export.core.load_metadatas --mailboxes-file mailboxes.txt --also-parquet
 ```
 
 Walks `output/<mailbox>/<date>/<date>.csv`, adds the `mailbox` and
@@ -231,10 +231,10 @@ next to it — see [ANALYSIS.md](ANALYSIS.md) for what that buys you.
 
 ```bash
 # how much work, and how much disk
-python -m scripts.download_payloads --year 2024 --dry-run
+python -m gmail_bulk_export.scripts.download_payloads --year 2024 --dry-run
 
 # download (bodies only)
-python -m scripts.download_payloads --year 2024
+python -m gmail_bulk_export.scripts.download_payloads --year 2024
 ```
 
 Work units are (mailbox × month) with a checkpoint, same as metadata. An
@@ -251,11 +251,11 @@ know what attachments an email has, only to get the actual bytes.
 Recommended order for a full backfill:
 
 ```bash
-python -m scripts.download_payloads --year 2024
-python -m scripts.download_payloads --year 2023
-python -m scripts.download_payloads --year 2025
-python -m scripts.download_payloads --year 2022,2021,2020
-python -m scripts.download_payloads --year 2019,2018,2017,2016
+python -m gmail_bulk_export.scripts.download_payloads --year 2024
+python -m gmail_bulk_export.scripts.download_payloads --year 2023
+python -m gmail_bulk_export.scripts.download_payloads --year 2025
+python -m gmail_bulk_export.scripts.download_payloads --year 2022,2021,2020
+python -m gmail_bulk_export.scripts.download_payloads --year 2019,2018,2017,2016
 ```
 
 ## 7. Phase 4 — Attachments
@@ -264,7 +264,7 @@ Attachments travel inside the same `format=raw` payload as the body, so they
 download with the same command plus a flag:
 
 ```bash
-python -m scripts.download_payloads --year 2024 --with-attachments
+python -m gmail_bulk_export.scripts.download_payloads --year 2024 --with-attachments
 ```
 
 Saved as `<msg_id>_attachments.gz` next to the body, filtered by MIME type
@@ -278,7 +278,7 @@ inconsistent re-download.
 ## 8. Analysis
 
 ```bash
-python -m core.load_metadatas --mailboxes-file mailboxes.txt --also-parquet
+python -m gmail_bulk_export.core.load_metadatas --mailboxes-file mailboxes.txt --also-parquet
 ```
 
 See [ANALYSIS.md](ANALYSIS.md) for what to do next with
@@ -343,7 +343,7 @@ Format notes:
   above. It's what shows up as `Too many concurrent requests`.
 - 1,200,000 units per minute per project.
 
-The token bucket in [core/rate_limit.py](../core/rate_limit.py) sets the
+The token bucket in [core/rate_limit.py](../src/gmail_bulk_export/core/rate_limit.py) sets the
 pace, and `gmail_retry` retries with exponential backoff and jitter **only**
 transient failures (429, 5xx, and 403-by-quota). A 404 or a permissions error
 fails immediately instead of burning 8 retries.

@@ -29,10 +29,10 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
-from cli.gmail_payloads_downloader import download_email_bodies
-from config import output_dir
-from config_logger import get_app_logger
-from core.checkpoints import load_checkpoint, save_checkpoint
+from gmail_bulk_export.cli.gmail_payloads_downloader import download_email_bodies
+from gmail_bulk_export.config import output_dir
+from gmail_bulk_export.config_logger import get_app_logger
+from gmail_bulk_export.core.checkpoints import load_checkpoint, save_checkpoint
 
 logger = get_app_logger()
 

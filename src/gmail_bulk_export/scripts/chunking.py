@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Iterator, List, Optional, Sequence
 
-from core.checkpoints import make_key
+from gmail_bulk_export.core.checkpoints import make_key
 
 PHASE_METADATA = "metadata"
 

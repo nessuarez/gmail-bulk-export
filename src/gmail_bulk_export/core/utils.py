@@ -4,7 +4,7 @@ from typing import Optional
 
 from dateutil import parser as date_parser
 
-from config import output_dir
+from gmail_bulk_export.config import output_dir
 
 
 def ensure_dir_exists(path):

@@ -6,9 +6,9 @@ import threading
 import uuid
 from collections import defaultdict
 
-from config_logger import get_app_logger
-from core.file_handler import generate_base_dir
-from core.utils import ensure_dir_exists
+from gmail_bulk_export.config_logger import get_app_logger
+from gmail_bulk_export.core.file_handler import generate_base_dir
+from gmail_bulk_export.core.utils import ensure_dir_exists
 
 logger = get_app_logger()
 

@@ -12,8 +12,8 @@ import os
 
 import pytest
 
-import config
-from core import checkpoints, file_handler
+from gmail_bulk_export import config
+from gmail_bulk_export.core import checkpoints, file_handler
 
 
 @pytest.fixture

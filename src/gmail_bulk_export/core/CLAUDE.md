@@ -14,7 +14,7 @@ instead.
 | [rate_limit.py](rate_limit.py) | Token bucket + retry policy | Every network call goes through here |
 | [checkpoints.py](checkpoints.py) | JSON state per (mailbox, work unit) | Resumption depends on this |
 | [save_to_csv.py](save_to_csv.py) | Metadata schema + incremental merge | Source of truth for the schema |
-| [load_metadatas.py](load_metadatas.py) | Consolidates the daily CSVs | `python -m core.load_metadatas [--also-parquet]` |
+| [load_metadatas.py](load_metadatas.py) | Consolidates the daily CSVs | `python -m gmail_bulk_export.core.load_metadatas [--also-parquet]` |
 | [load_email_bodies.py](load_email_bodies.py) | Loads the `.jsonl.gz` bodies into a DataFrame | |
 | [email_body_handler.py](email_body_handler.py) | Extracts plain text and HTML from the MIME payload | |
 | [attachment_handler.py](attachment_handler.py) | Filters attachments by MIME type and saves them | |

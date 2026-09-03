@@ -4,9 +4,9 @@ import os
 from typing import Optional
 
 # Aliased because the parameter below is also called output_dir.
-from config import output_dir as configured_output_dir
-from config_logger import get_app_logger
-from core.utils import ensure_dir_exists, generate_base_dir, parse_email_date
+from gmail_bulk_export.config import output_dir as configured_output_dir
+from gmail_bulk_export.config_logger import get_app_logger
+from gmail_bulk_export.core.utils import ensure_dir_exists, generate_base_dir, parse_email_date
 
 logger = get_app_logger()
 

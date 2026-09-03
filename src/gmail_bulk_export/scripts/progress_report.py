@@ -13,9 +13,9 @@ import os
 import sys
 from collections import defaultdict
 
-from config import output_dir
-from core.checkpoints import load_checkpoint
-from scripts.chunking import PHASE_METADATA, clamp_to_today, month_chunks
+from gmail_bulk_export.config import output_dir
+from gmail_bulk_export.core.checkpoints import load_checkpoint
+from gmail_bulk_export.scripts.chunking import PHASE_METADATA, clamp_to_today, month_chunks
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):

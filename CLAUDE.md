@@ -12,14 +12,20 @@ unusual decision in the code traces back to that; each one is explained in
 | If you're going to... | Start with |
 | --- | --- |
 | Run a download | [docs/RUNBOOK.md](docs/RUNBOOK.md) — the real operational guide |
-| Touch authentication | [auth/CLAUDE.md](auth/CLAUDE.md) |
-| Touch a `gmail-bulk-export` subcommand | [cli/CLAUDE.md](cli/CLAUDE.md) |
-| Touch I/O, checkpoints, rate limiting, CSV schema | [core/CLAUDE.md](core/CLAUDE.md) |
-| Touch multi-mailbox orchestration | [scripts/CLAUDE.md](scripts/CLAUDE.md) |
+| Touch authentication | [auth/CLAUDE.md](src/gmail_bulk_export/auth/CLAUDE.md) |
+| Touch a `gmail-bulk-export` subcommand | [cli/CLAUDE.md](src/gmail_bulk_export/cli/CLAUDE.md) |
+| Touch I/O, checkpoints, rate limiting, CSV schema | [core/CLAUDE.md](src/gmail_bulk_export/core/CLAUDE.md) |
+| Touch multi-mailbox orchestration | [scripts/CLAUDE.md](src/gmail_bulk_export/scripts/CLAUDE.md) |
 | Write or fix tests | [tests/CLAUDE.md](tests/CLAUDE.md) |
 | Configure credentials or `.env` | [docs/AUTH.md](docs/AUTH.md), [docs/CONFIG.md](docs/CONFIG.md) |
 
 ## Architecture
+
+The engine is a package: everything importable is under
+`src/gmail_bulk_export/`, and the layer names below (`auth/`, `cli/`, `core/`,
+`scripts/`) are directories inside it. `config.json`, `.env`, `output/` and
+`logs/` belong to whoever runs the engine and are read from the **working
+directory**, never from the package.
 
 ```text
                     auth/service.py  ──►  Gmail API
@@ -46,7 +52,7 @@ standalone `gmail-bulk-export` subcommands have no checkpoints and no resumption
 ```text
 1. labels    → output/<mailbox>/labels.csv
 2. metadata  → output/<mailbox>/<YYYY-MM-DD>/<YYYY-MM-DD>.csv   (phases 1 and 2 in one command)
-   ↓ consolidation: python -m core.load_metadatas [--also-parquet]
+   ↓ consolidation: python -m gmail_bulk_export.core.load_metadatas [--also-parquet]
    output/emails_with_mailboxes.csv (+ .parquet)
 3. bodies    → output/<mailbox>/<YYYY-MM-DD>/<msg_id>.jsonl.gz
 4. attachments → output/<mailbox>/<YYYY-MM-DD>/<msg_id>_attachments.gz
@@ -69,7 +75,7 @@ uv run pytest -k chunking                 # by name
 uv run ruff format . && uv run ruff check --fix .
 uv run pre-commit run --all-files
 
-uv run python -m cli.main token           # check credentials
+uv run python -m gmail_bulk_export.cli.main token           # check credentials
 ```
 
 When changing dependencies, edit `pyproject.toml` and run `uv lock`; never
@@ -104,7 +110,7 @@ happen again.
    defaults (which are the old, aggressive ones).
 
 4. **The Gmail service is cached per thread, not globally**
-   ([auth/service.py](auth/service.py) → `get_cached_gmail_service`). The
+   ([auth/service.py](src/gmail_bulk_export/auth/service.py) → `get_cached_gmail_service`). The
    underlying `httplib2.Http` isn't thread-safe: sharing one service across a
    `ThreadPoolExecutor`'s threads corrupts responses under load.
 
@@ -125,13 +131,13 @@ happen again.
 
 8. **`labelIds` in the CSVs is a Python list repr, not JSON.** Parse it with
    `ast.literal_eval`, never `json.loads`
-   ([data_transforms.py](data_transforms.py) → `transform_list_columns`). The
+   ([data_transforms.py](src/gmail_bulk_export/data_transforms.py) → `transform_list_columns`). The
    Parquet copy produced by `--also-parquet` stores it as a real list instead.
 
 9. **`internalDate` is epoch milliseconds** and is the reliable date field. The
    `date` column is the raw `Date` header and doesn't always parse.
 
-10. **The transforms in [data_transforms.py](data_transforms.py) are
+10. **The transforms in [data_transforms.py](src/gmail_bulk_export/data_transforms.py) are
     idempotent.** Anything downstream may apply the same transform twice;
     reapplying one must be a no-op, not destroy the column.
 
@@ -141,13 +147,13 @@ happen again.
   `bulk_gmail` logger with a file handler in `logs/`. Don't use `print` for
   diagnostics — only for the final human-facing summary.
 - **Retries**: decorate network calls with `gmail_retry` from
-  [core/rate_limit.py](core/rate_limit.py) and call `pace()` before every
+  [core/rate_limit.py](src/gmail_bulk_export/core/rate_limit.py) and call `pace()` before every
   request. Retry **only** transient failures (429, 5xx, 403-by-quota); a 404
   or a permissions 403 should fail immediately instead of burning 8 retries.
   Don't add `time.sleep(random.uniform(...))`: that's exactly what the token
   bucket exists to replace.
 - **CSV schema**: the source of truth is `METADATA_FIELDNAMES` in
-  [core/save_to_csv.py](core/save_to_csv.py). Adding a field there is enough
+  [core/save_to_csv.py](src/gmail_bulk_export/core/save_to_csv.py). Adding a field there is enough
   for it to also show up in days downloaded before the field existed
   (`merge_csv_files` unions the columns found on disk with the schema).
 - **New scripts**: copy the `reconfigure(encoding="utf-8")` block over

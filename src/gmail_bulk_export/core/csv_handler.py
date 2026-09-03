@@ -3,7 +3,7 @@
 import csv
 from typing import List, Optional, Tuple
 
-from config_logger import get_app_logger
+from gmail_bulk_export.config_logger import get_app_logger
 
 logger = get_app_logger()
 

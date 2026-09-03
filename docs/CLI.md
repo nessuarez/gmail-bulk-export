@@ -2,7 +2,7 @@
 
 ```bash
 uv run gmail-bulk-export [global options] <command> [command options]
-uv run python -m cli.main <command> ...   # equivalent, without relying on the entry point
+uv run python -m gmail_bulk_export.cli.main <command> ...   # equivalent, without relying on the entry point
 ```
 
 The examples below drop the `uv run` prefix for brevity; add it back, or
@@ -40,7 +40,7 @@ gmail-bulk-export metadata --username user@example.com --start_date 20230101 --e
 
 Output: `output/<mailbox>/<YYYY-MM-DD>/<YYYY-MM-DD>.csv`, one CSV per day. The
 schema is defined by `METADATA_FIELDNAMES` in
-[../core/save_to_csv.py](../core/save_to_csv.py) — check it there instead of
+[../core/save_to_csv.py](../src/gmail_bulk_export/core/save_to_csv.py) — check it there instead of
 trusting a list copied into a document.
 
 ## `payloads`
@@ -115,7 +115,7 @@ removed.
 Attachments are downloaded like this, saved next to their message:
 
 ```bash
-python -m scripts.download_payloads --year 2024 --with-attachments
+python -m gmail_bulk_export.scripts.download_payloads --year 2024 --with-attachments
 ```
 
 ## Exit codes

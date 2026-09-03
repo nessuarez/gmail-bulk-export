@@ -16,22 +16,22 @@ from typing import List, Optional
 from dateutil import parser as date_parser
 from tqdm import tqdm
 
-from auth.service import get_cached_gmail_service
-from config import get_config, output_dir
-from config_logger import get_app_logger
-from core.attachment_handler import (
+from gmail_bulk_export.auth.service import get_cached_gmail_service
+from gmail_bulk_export.config import get_config, output_dir
+from gmail_bulk_export.config_logger import get_app_logger
+from gmail_bulk_export.core.attachment_handler import (
     generate_attachment_file_path,
     get_filtered_attachments,
     save_attachments,
 )
-from core.csv_handler import (
+from gmail_bulk_export.core.csv_handler import (
     read_email_ids_and_mailbox_from_csv,
     read_email_ids_from_metadata_csv,
 )
-from core.email_body_handler import process_email_raw_response
-from core.file_handler import generate_email_file_path
-from core.rate_limit import gmail_retry, pace
-from core.utils import ensure_directory, generate_base_dir, parse_email_date
+from gmail_bulk_export.core.email_body_handler import process_email_raw_response
+from gmail_bulk_export.core.file_handler import generate_email_file_path
+from gmail_bulk_export.core.rate_limit import gmail_retry, pace
+from gmail_bulk_export.core.utils import ensure_directory, generate_base_dir, parse_email_date
 
 # Configurar gettext
 gettext.bindtextdomain("messages", "locale")

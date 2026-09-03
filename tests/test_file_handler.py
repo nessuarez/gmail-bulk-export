@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from core.file_handler import (
+from gmail_bulk_export.core.file_handler import (
     check_email_downloaded,
     find_email_file,
     generate_email_file_path,

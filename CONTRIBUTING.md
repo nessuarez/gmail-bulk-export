@@ -24,7 +24,7 @@ debugging session once each. The per-directory `CLAUDE.md` files
 
 ## Ground rules
 
-- **Run modules with `python -m`**, e.g. `python -m core.load_metadatas`, not
+- **Run modules with `python -m`**, e.g. `python -m gmail_bulk_export.core.load_metadatas`, not
   `python core/load_metadatas.py`.
 - **No test touches the network.** If something needs Gmail to be tested,
   extract the logic into a pure function first — see

@@ -6,7 +6,7 @@ delegation**. No interactive OAuth flow, no `token.json`: it reads
 `Credentials.with_subject(username)`.
 
 Everything lives in [service.py](service.py) (~250 lines). Setup and common
-errors: [../docs/AUTH.md](../docs/AUTH.md).
+errors: [../docs/AUTH.md](../../../docs/AUTH.md).
 
 ## API
 
@@ -53,6 +53,6 @@ fail immediately). That distinction lives in `core.rate_limit.is_retryable`,
 looking at the `HttpError`'s `reason`; if you move error-handling logic here,
 don't duplicate it.
 
-The tests ([../tests/test_auth_check.py](../tests/test_auth_check.py)) check
+The tests ([../tests/test_auth_check.py](../../../tests/test_auth_check.py)) check
 signatures and interface, without hitting the network. Any test that needs
 real credentials doesn't belong in this suite.

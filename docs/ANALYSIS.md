@@ -130,7 +130,7 @@ for row in con.execute(
 
 Before building anything on top of a large backfill, it's worth checking the
 export itself is complete and consistent — the same instinct behind
-[`scripts/progress_report.py`](../scripts/progress_report.py), one level up.
+[`scripts/progress_report.py`](../src/gmail_bulk_export/scripts/progress_report.py), one level up.
 A cheap pandas-only version:
 
 ```python

@@ -7,8 +7,8 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
-from config import output_dir
-from config_logger import get_app_logger
+from gmail_bulk_export.config import output_dir
+from gmail_bulk_export.config_logger import get_app_logger
 
 # Configure basic logging
 logger = get_app_logger("logs")

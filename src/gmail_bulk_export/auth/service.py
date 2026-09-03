@@ -15,7 +15,7 @@ in a Google Workspace domain. This approach:
 ## Usage
 
 ```python
-from auth.service import get_gmail_service
+from gmail_bulk_export.auth.service import get_gmail_service
 
 # Create a service for a specific user
 service = get_gmail_service("user@example.com")
@@ -44,7 +44,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import HttpRequest
 
-from config import credentials_file
+from gmail_bulk_export.config import credentials_file
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 load_dotenv()

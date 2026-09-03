@@ -26,13 +26,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import List
 
-from auth.service import AuthenticationError, check_authentication
-from cli.bulk_emails_downloader import fetch_email_metadata
-from cli.gmail_labels_downloader import get_users_label
-from config import output_dir
-from config_logger import get_app_logger
-from core.checkpoints import load_checkpoint, save_checkpoint
-from scripts.chunking import (
+from gmail_bulk_export.auth.service import AuthenticationError, check_authentication
+from gmail_bulk_export.cli.bulk_emails_downloader import fetch_email_metadata
+from gmail_bulk_export.cli.gmail_labels_downloader import get_users_label
+from gmail_bulk_export.config import output_dir
+from gmail_bulk_export.config_logger import get_app_logger
+from gmail_bulk_export.core.checkpoints import load_checkpoint, save_checkpoint
+from gmail_bulk_export.scripts.chunking import (
     PHASE_METADATA,
     clamp_to_today,
     iter_plan,

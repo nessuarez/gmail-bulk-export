@@ -18,7 +18,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from config import output_dir
+from gmail_bulk_export.config import output_dir
 
 
 def _checkpoints_dir(username: str) -> str:

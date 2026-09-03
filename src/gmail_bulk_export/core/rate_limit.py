@@ -25,7 +25,7 @@ from tenacity import (
     wait_exponential_jitter,
 )
 
-from config import get_config
+from gmail_bulk_export.config import get_config
 
 logger = logging.getLogger(__name__)
 

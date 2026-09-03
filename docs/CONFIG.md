@@ -5,7 +5,7 @@ A layered system. Priority, highest to lowest:
 1. Command-line arguments — **with important exceptions, see below**
 2. Environment variables (`.env`)
 3. [`config.json`](../config.json)
-4. Defaults in [`config.py`](../config.py)
+4. Defaults in [`config.py`](../src/gmail_bulk_export/config.py)
 
 ## Values
 
@@ -63,7 +63,7 @@ Add your own per deployment:
 ```
 
 ```bash
-DETAILED_LABELS="INBOX,SENT,MY_CUSTOM_LABEL" python -m cli.main labels --username ...
+DETAILED_LABELS="INBOX,SENT,MY_CUSTOM_LABEL" python -m gmail_bulk_export.cli.main labels --username ...
 ```
 
 A label that doesn't exist in a mailbox is **silently skipped** (at DEBUG
@@ -88,7 +88,7 @@ All three paths work and apply in this order:
 
 ```bash
 gmail-bulk-export --output-dir /other/path metadata --username ...   # flag
-OUTPUT_DIR=/other/path python -m scripts.download_metadata ... # environment variable
+OUTPUT_DIR=/other/path python -m gmail_bulk_export.scripts.download_metadata ... # environment variable
 ```
 
 `--output-dir` used to be **accepted and silently ignored** for a long time:

@@ -8,14 +8,14 @@ in-process.
 All of them are invoked as a module from the repo root:
 
 ```bash
-python -m scripts.download_metadata --mailboxes-file mailboxes.txt --start 2016-01 --end 2025-12
+python -m gmail_bulk_export.scripts.download_metadata --mailboxes-file mailboxes.txt --start 2016-01 --end 2025-12
 ```
 
 `python scripts/download_metadata.py` **fails**: the `config` and `core`
 imports need the repo root on `sys.path`.
 
 Full operational guide (options, resumption, running in the background):
-[../docs/RUNBOOK.md](../docs/RUNBOOK.md).
+[../docs/RUNBOOK.md](../../../docs/RUNBOOK.md).
 
 ## Map
 
@@ -57,7 +57,7 @@ reintroduces silent gaps at month boundaries.
 
 It's the only module in the package with no I/O and no network, and
 consequently the best-tested
-([../tests/test_chunking.py](../tests/test_chunking.py)).
+([../tests/test_chunking.py](../../../tests/test_chunking.py)).
 
 ## progress_report.py
 

@@ -5,7 +5,7 @@ is the low-level layer. For a real download across several mailboxes and
 years, use [../scripts/](../scripts/CLAUDE.md), which imports these modules
 and adds month-chunking and checkpoints on top.
 
-Command and option reference: [../docs/CLI.md](../docs/CLI.md).
+Command and option reference: [../docs/CLI.md](../../../docs/CLI.md).
 
 ## Map
 
@@ -81,7 +81,7 @@ and saved flat files to `output/<mailbox>/attachments/<name>`, where two
 same-named attachments from different emails overwrote each other.
 
 Attachments are downloaded with
-`python -m scripts.download_payloads --with-attachments`, which saves them
+`python -m gmail_bulk_export.scripts.download_payloads --with-attachments`, which saves them
 next to their message.
 
 **Don't confuse this with

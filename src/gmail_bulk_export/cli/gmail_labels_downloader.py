@@ -6,13 +6,13 @@ import logging
 from googleapiclient.errors import HttpError
 from tenacity import after_log, before_log, retry, stop_after_attempt, wait_exponential
 
-from auth.service import get_gmail_service
-from config import detailed_labels
+from gmail_bulk_export.auth.service import get_gmail_service
+from gmail_bulk_export.config import detailed_labels
 
 # Aliased because the parameter below is also called output_dir.
-from config import output_dir as configured_output_dir
-from config_logger import get_app_logger
-from core.save_to_csv import save_labels_csv
+from gmail_bulk_export.config import output_dir as configured_output_dir
+from gmail_bulk_export.config_logger import get_app_logger
+from gmail_bulk_export.core.save_to_csv import save_labels_csv
 
 logger = get_app_logger()
 

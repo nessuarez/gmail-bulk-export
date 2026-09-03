@@ -1,5 +1,9 @@
 """Central configuration for gmail-bulk-export.
 
+Values are read from the **working directory of whatever is running**, not from
+the package: `config.json`, `.env`, `output/` and `logs/` all belong to the
+deployment, not to the engine.
+
 This module loads configuration from:
 1. config.json (default values)
 2. .env file (environment variables override JSON)
@@ -22,12 +26,26 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Path to config.json
-CONFIG_FILE = Path(__file__).parent / "config.json"
 
-# Etiquetas cuyas cifras de mensajes e hilos se piden una a una. Sólo las
-# estándar de Gmail: cualquier etiqueta propia de una organización se añade
-# desde config.json o DETAILED_LABELS, no aquí.
+def config_file() -> Path:
+    """Where `config.json` is looked up, resolved at call time.
+
+    The **working directory**, not `Path(__file__).parent`. This module ships
+    inside an installed package: a `__file__`-relative path would read the
+    engine's own `config.json` from site-packages and silently ignore the one
+    belonging to the deployment that is actually running — the same class of
+    bug as binding `OUTPUT_DIR` at import time. Every entry point already has
+    to run from the project root.
+
+    `GMAIL_BULK_EXPORT_CONFIG` overrides it for anything that cannot.
+    """
+    override = os.getenv("GMAIL_BULK_EXPORT_CONFIG")
+    return Path(override) if override else Path.cwd() / "config.json"
+
+
+# Labels whose message and thread counts are requested one by one. Standard
+# Gmail labels only: an organisation's own labels are added from config.json or
+# DETAILED_LABELS, never here.
 DEFAULT_DETAILED_LABELS = ("INBOX", "SENT", "UNREAD", "CHAT")
 
 # Global config dictionary
@@ -44,9 +62,10 @@ def load_config() -> Dict[str, Any]:
     global _config
 
     # Load defaults from config.json
-    if CONFIG_FILE.exists():
+    config_path = config_file()
+    if config_path.exists():
         try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 _config = json.load(f)
         except (json.JSONDecodeError, IOError) as e:
             print(f"Warning: Could not load config.json: {e}")
@@ -124,13 +143,13 @@ def credentials_file() -> str:
 
 
 def detailed_labels() -> list:
-    """Etiquetas para las que se piden cifras detalladas, resueltas al llamar.
+    """Labels to request detailed counts for, resolved at call time.
 
-    La lista vivía hardcodeada en `cli/gmail_labels_downloader.py` e incluía una
-    etiqueta propia de una organización concreta, lo que ataba un módulo por lo
-    demás genérico a un despliegue. Ahora el default son sólo las estándar de
-    Gmail y cada despliegue añade las suyas en `config.json` o en
-    `DETAILED_LABELS` (separadas por comas).
+    The list used to be hardcoded in `cli/gmail_labels_downloader.py` and
+    included one organisation's own label, which tied an otherwise generic
+    module to a single deployment. The default is now the standard Gmail labels
+    only; each deployment adds its own in `config.json` or in `DETAILED_LABELS`
+    (comma separated).
     """
     return list(get_config("detailed_labels", DEFAULT_DETAILED_LABELS))
 

@@ -27,8 +27,8 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
-from config import output_dir
-from data_transforms import transform_date_columns, transform_list_columns
+from gmail_bulk_export.config import output_dir
+from gmail_bulk_export.data_transforms import transform_date_columns, transform_list_columns
 
 # Only the consolidated day files. A plain `*.csv` glob would also pick up
 # `<date>_<uuid>.csv` batch temporaries left behind by an interrupted run and

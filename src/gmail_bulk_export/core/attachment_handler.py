@@ -5,8 +5,8 @@ import gzip
 import os
 from typing import Any, Dict, List, Optional
 
-from config_logger import get_app_logger
-from core.utils import ensure_directory
+from gmail_bulk_export.config_logger import get_app_logger
+from gmail_bulk_export.core.utils import ensure_directory
 
 logger = get_app_logger()
 

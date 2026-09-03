@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 
 import html2text
 
-from config_logger import get_app_logger
+from gmail_bulk_export.config_logger import get_app_logger
 
 logger = get_app_logger()
 
@@ -45,7 +45,7 @@ def process_email_raw_response(
     """Processes a raw email response from the Gmail API and extracts relevant information."""
     import base64
 
-    from core.attachment_handler import (
+    from gmail_bulk_export.core.attachment_handler import (
         get_attachment_metadata,
         get_filtered_attachments,
     )

@@ -10,8 +10,8 @@ import logging
 import sys
 from datetime import datetime
 
-from auth.service import AuthenticationError, check_authentication
-from config import (
+from gmail_bulk_export.auth.service import AuthenticationError, check_authentication
+from gmail_bulk_export.config import (
     BATCH_SIZE,
     MAX_WORKERS,
     PAYLOAD_BATCH_SIZE,
@@ -19,7 +19,7 @@ from config import (
     output_dir,
     update_config,
 )
-from config_logger import get_app_logger
+from gmail_bulk_export.config_logger import get_app_logger
 
 from . import bulk_emails_downloader, gmail_labels_downloader, gmail_payloads_downloader
 

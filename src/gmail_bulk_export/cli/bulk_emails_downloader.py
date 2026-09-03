@@ -12,12 +12,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dateutil import parser as date_parser
 from tqdm import tqdm
 
-from auth.service import get_cached_gmail_service, get_gmail_service
-from config import get_config, output_dir
-from config_logger import get_app_logger
-from core.rate_limit import gmail_retry, is_retryable, pace
-from core.save_to_csv import save_emails_to_csv
-from core.utils import parse_email_date
+from gmail_bulk_export.auth.service import get_cached_gmail_service, get_gmail_service
+from gmail_bulk_export.config import get_config, output_dir
+from gmail_bulk_export.config_logger import get_app_logger
+from gmail_bulk_export.core.rate_limit import gmail_retry, is_retryable, pace
+from gmail_bulk_export.core.save_to_csv import save_emails_to_csv
+from gmail_bulk_export.core.utils import parse_email_date
 
 logger = get_app_logger()
 

@@ -56,7 +56,7 @@ Google Workspace Admin console. Download its JSON key and save it as
 Step-by-step: [docs/AUTH.md](docs/AUTH.md).
 
 ```bash
-uv run python -m cli.main token       # does the credentials file exist and look valid?
+uv run python -m gmail_bulk_export.cli.main token       # does the credentials file exist and look valid?
 ```
 
 ## Quickstart (one mailbox, one month)
@@ -82,17 +82,17 @@ export. Full command reference: [docs/CLI.md](docs/CLI.md).
 echo "user@example.com" > mailboxes.txt
 
 # phases 1 and 2: labels + metadata
-uv run python -m scripts.download_metadata --mailboxes-file mailboxes.txt \
+uv run python -m gmail_bulk_export.scripts.download_metadata --mailboxes-file mailboxes.txt \
     --start 2016-01 --end 2025-12 --priority 2024,2023
 
 # what's left?
-uv run python -m scripts.progress_report
+uv run python -m gmail_bulk_export.scripts.progress_report
 
 # consolidate (add --also-parquet for a typed copy alongside the CSV)
-uv run python -m core.load_metadatas --mailboxes-file mailboxes.txt --also-parquet
+uv run python -m gmail_bulk_export.core.load_metadatas --mailboxes-file mailboxes.txt --also-parquet
 
 # phase 3: bodies (phase 4: add --with-attachments)
-uv run python -m scripts.download_payloads --year 2024
+uv run python -m gmail_bulk_export.scripts.download_payloads --year 2024
 ```
 
 Re-running any of these commands resumes; it doesn't re-download what's
@@ -104,13 +104,25 @@ resumption, running in the background, dead-letters, and known issues.
 ## Structure
 
 ```text
-auth/      Gmail authentication (service account + impersonation)
-cli/       gmail-bulk-export subcommands: one mailbox, one range
-core/      rate limiting, checkpoints, CSV schema
-scripts/   multi-mailbox orchestration with checkpoints  ← what you actually run
-tests/     pytest; no test touches the network
-docs/      auth, CLI, config, legal FAQ, analysis guide
+src/gmail_bulk_export/
+├── auth/       Gmail authentication (service account + impersonation)
+├── cli/        gmail-bulk-export subcommands: one mailbox, one range
+├── core/       rate limiting, checkpoints, CSV schema, search index
+└── scripts/    multi-mailbox orchestration with checkpoints  ← what you actually run
+tests/          pytest; no test touches the network
+docs/           auth, CLI, config, legal FAQ, analysis guide
 ```
+
+Everything importable lives under `src/gmail_bulk_export/`, so the package does
+not squat generic top-level names (`core`, `config`, `scripts`) in the
+site-packages of whoever installs it, and a project that depends on this engine
+can keep its own `core/` and `scripts/`. The docs name the layers by their short
+names — `core/`, `scripts/` — because that is what they are called; the files
+live one package down.
+
+`config.json`, `.env`, `output/` and `logs/` stay at the **root of whatever you
+run**, not inside the package: the engine reads them from the working
+directory.
 
 Each directory has its own `CLAUDE.md` with that area's invariants and
 pitfalls. The overall map is in [CLAUDE.md](CLAUDE.md).
