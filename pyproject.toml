@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gmail-bulk-export"
-version = "0.1.0"
+version = "0.2.0"
 description = "CLI toolkit to extract Gmail messages in bulk using the Gmail API with service-account impersonation"
 readme = "README.md"
 # The CLI uses PEP 604 unions (`str | None`) in evaluated function signatures,
@@ -43,21 +43,19 @@ dev = [
 ]
 
 [project.scripts]
-gmail-bulk-export = "cli.main:main"
+gmail-bulk-export = "gmail_bulk_export.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/<your-username>/gmail-bulk-export"
 Repository = "https://github.com/<your-username>/gmail-bulk-export.git"
 Issues = "https://github.com/<your-username>/gmail-bulk-export/issues"
 
-[tool.setuptools]
-# scripts/ holds the orchestrators that are the real entry point; leaving it out
-# meant a non-editable `pip install .` shipped a package you could not run.
-packages = ["auth", "cli", "core", "scripts"]
-# Top-level modules, not packages: every other module does `from config import
-# ...` at import time, so omitting these made an installed copy raise
-# ModuleNotFoundError on the very first import.
-py-modules = ["config", "config_logger", "data_transforms"]
+# src layout: everything importable lives under src/gmail_bulk_export/, so an
+# installed copy cannot pick up the repository root by accident, and the
+# package does not squat generic top-level names (`core`, `config`, `scripts`)
+# in the site-packages of whoever installs it.
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 "*" = ["*.txt", "*.md"]
@@ -74,7 +72,7 @@ select = ["E", "F", "W", "I"]
 
 [tool.mypy]
 # mypy is an opt-in tool here, not a gate: it is not in the hooks or in CI.
-# `uv run mypy auth cli core scripts config.py` currently reports ~15 findings,
+# `uv run mypy src` currently reports ~15 findings,
 # mostly missing annotations on empty collections. Wiring it into CI means
 # clearing those first — a deliberate piece of work, not a config flip.
 python_version = "3.10"
@@ -86,4 +84,4 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "--cov=auth --cov=cli --cov=core --cov=scripts"
+addopts = "--cov=gmail_bulk_export"

@@ -2,8 +2,8 @@ import inspect
 
 import pytest
 
-import auth.service as service
-import config
+from gmail_bulk_export import config
+from gmail_bulk_export.auth import service
 
 
 def test_check_authentication_signature():

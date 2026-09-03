@@ -1,6 +1,6 @@
 import logging
 
-from core.utils import parse_email_date
+from gmail_bulk_export.core.utils import parse_email_date
 
 
 def test_parse_email_date_standard_formats():

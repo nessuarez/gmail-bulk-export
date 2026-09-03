@@ -7,8 +7,8 @@ and that a label missing from a mailbox is skipped instead of being requested
 with `id=None`.
 """
 
-import config
-from cli import gmail_labels_downloader as labels_cli
+from gmail_bulk_export import config
+from gmail_bulk_export.cli import gmail_labels_downloader as labels_cli
 
 
 def test_default_carries_only_standard_gmail_labels():

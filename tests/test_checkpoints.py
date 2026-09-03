@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from core.checkpoints import clear_checkpoint, load_checkpoint, save_checkpoint
+from gmail_bulk_export.core.checkpoints import clear_checkpoint, load_checkpoint, save_checkpoint
 
 
 def test_checkpoint_save_load_clear(tmp_path, monkeypatch):

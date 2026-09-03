@@ -10,7 +10,7 @@ import csv
 import threading
 from pathlib import Path
 
-from core.save_to_csv import merge_csv_files
+from gmail_bulk_export.core.save_to_csv import merge_csv_files
 
 DATE = "2024-03-15"
 FIELDNAMES = ["id", "subject", "date"]

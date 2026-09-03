@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 
-from core.save_to_csv import merge_csv_files
+from gmail_bulk_export.core.save_to_csv import merge_csv_files
 
 
 def write_temp_csv(path: Path, date_prefix: str, rows):

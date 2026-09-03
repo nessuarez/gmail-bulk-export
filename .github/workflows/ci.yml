@@ -70,5 +70,5 @@ jobs:
           uv build --wheel
           uv venv /tmp/clean
           VIRTUAL_ENV=/tmp/clean uv pip install dist/*.whl
-          /tmp/clean/bin/python -c "import auth.service, cli.main, core.rate_limit, scripts.download_metadata, scripts.progress_report, config, config_logger, data_transforms"
+          /tmp/clean/bin/python -c "import gmail_bulk_export.auth.service, gmail_bulk_export.cli.main, gmail_bulk_export.core.rate_limit, gmail_bulk_export.core.search_index, gmail_bulk_export.scripts.download_metadata, gmail_bulk_export.scripts.progress_report, gmail_bulk_export.config, gmail_bulk_export.config_logger, gmail_bulk_export.data_transforms"
           /tmp/clean/bin/gmail-bulk-export --help > /dev/null

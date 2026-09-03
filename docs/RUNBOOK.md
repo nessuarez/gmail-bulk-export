@@ -21,8 +21,8 @@ activated.
 Quick check:
 
 ```bash
-python -m cli.main token                    # validates the credentials file
-python -m scripts.download_metadata --mailboxes-file mailboxes.txt \
+python -m gmail_bulk_export.cli.main token                    # validates the credentials file
+python -m gmail_bulk_export.scripts.download_metadata --mailboxes-file mailboxes.txt \
     --start 2024-01 --end 2024-01 --dry-run   # validates access to each mailbox
 ```
 
@@ -85,7 +85,7 @@ chunks take as long as the hundreds before them.
 > To change the destination, either of these works:
 >
 > ```bash
-> OUTPUT_DIR=/other/path python -m scripts.download_metadata ...
+> OUTPUT_DIR=/other/path python -m gmail_bulk_export.scripts.download_metadata ...
 > gmail-bulk-export --output-dir /other/path metadata --username ...
 > ```
 >
@@ -112,7 +112,7 @@ with a single command.
 ## 3. Phases 1 and 2 — Labels and metadata
 
 ```bash
-python -m scripts.download_metadata \
+python -m gmail_bulk_export.scripts.download_metadata \
     --mailboxes-file mailboxes.txt \
     --start 2016-01 --end 2025-12 \
     --priority 2024,2023,2025
@@ -173,9 +173,9 @@ emails**.
 ## 4. Seeing what's missing
 
 ```bash
-python -m scripts.progress_report                  # mailbox × month grid
-python -m scripts.progress_report --detail          # + a list of what's pending
-python -m scripts.progress_report --start 2024-01 --end 2024-12
+python -m gmail_bulk_export.scripts.progress_report                  # mailbox × month grid
+python -m gmail_bulk_export.scripts.progress_report --detail          # + a list of what's pending
+python -m gmail_bulk_export.scripts.progress_report --start 2024-01 --end 2024-12
 ```
 
 ```
@@ -208,7 +208,7 @@ skipped.
 ## 5. Consolidation
 
 ```bash
-python -m core.load_metadatas --mailboxes-file mailboxes.txt --also-parquet
+python -m gmail_bulk_export.core.load_metadatas --mailboxes-file mailboxes.txt --also-parquet
 ```
 
 Walks `output/<mailbox>/<date>/<date>.csv`, adds the `mailbox` and
@@ -231,10 +231,10 @@ next to it — see [ANALYSIS.md](ANALYSIS.md) for what that buys you.
 
 ```bash
 # how much work, and how much disk
-python -m scripts.download_payloads --year 2024 --dry-run
+python -m gmail_bulk_export.scripts.download_payloads --year 2024 --dry-run
 
 # download (bodies only)
-python -m scripts.download_payloads --year 2024
+python -m gmail_bulk_export.scripts.download_payloads --year 2024
 ```
 
 Work units are (mailbox × month) with a checkpoint, same as metadata. An
@@ -248,14 +248,43 @@ type, size), and `attachments_with_content`.
 **The attachment listing is already in the body**; you don't need phase 4 to
 know what attachments an email has, only to get the actual bytes.
 
+### Only the emails a search returns
+
+`download_payloads.py` works in whole months. To fetch the bodies of a handful
+of specific emails — the ones § 8 bis locates — download **by id**:
+
+```bash
+# 1. export the hits in the shape the downloader reads
+python -m gmail_bulk_export.scripts.search_emails --subject invoice --since 2025-02     --for-payloads --out output/ids.csv
+gmail-bulk-export payloads --csv-file output/ids.csv        # + --with-attachments
+
+# 2. or straight away, for a handful of ids
+gmail-bulk-export payloads --username desk@example.com --email_ids 1952bd04b8165682
+```
+
+The CSV needs `id` and `mailbox`. With `--csv-file` no `--username` is needed:
+each row carries its own, so one export can span several mailboxes.
+
+**A body is always written to the folder the message itself dictates** —
+`process_email` derives it from the `Date` header of what it just downloaded —
+so it lands next to its per-day CSV no matter where the list came from. The
+CSV's `date` column only decides **whether an already-downloaded body is
+skipped**, which is why `--for-payloads` emits the folder day (taken from
+`file_path`) rather than the UTC date: the two differ for about 1% of messages,
+and with the wrong date the downloader does not recognise what it already has
+and fetches it again.
+
+Neither path carries checkpoints. For a whole month, or to resume, use
+`download_payloads.py`.
+
 Recommended order for a full backfill:
 
 ```bash
-python -m scripts.download_payloads --year 2024
-python -m scripts.download_payloads --year 2023
-python -m scripts.download_payloads --year 2025
-python -m scripts.download_payloads --year 2022,2021,2020
-python -m scripts.download_payloads --year 2019,2018,2017,2016
+python -m gmail_bulk_export.scripts.download_payloads --year 2024
+python -m gmail_bulk_export.scripts.download_payloads --year 2023
+python -m gmail_bulk_export.scripts.download_payloads --year 2025
+python -m gmail_bulk_export.scripts.download_payloads --year 2022,2021,2020
+python -m gmail_bulk_export.scripts.download_payloads --year 2019,2018,2017,2016
 ```
 
 ## 7. Phase 4 — Attachments
@@ -264,7 +293,7 @@ Attachments travel inside the same `format=raw` payload as the body, so they
 download with the same command plus a flag:
 
 ```bash
-python -m scripts.download_payloads --year 2024 --with-attachments
+python -m gmail_bulk_export.scripts.download_payloads --year 2024 --with-attachments
 ```
 
 Saved as `<msg_id>_attachments.gz` next to the body, filtered by MIME type
@@ -278,7 +307,7 @@ inconsistent re-download.
 ## 8. Analysis
 
 ```bash
-python -m core.load_metadatas --mailboxes-file mailboxes.txt --also-parquet
+python -m gmail_bulk_export.core.load_metadatas --mailboxes-file mailboxes.txt --also-parquet
 ```
 
 See [ANALYSIS.md](ANALYSIS.md) for what to do next with
@@ -289,12 +318,66 @@ handle comfortably.
 
 ---
 
+## 8 bis. Finding specific emails
+
+The analysis path is for **understanding** the corpus; for **finding** a
+message — "that customer's May 2023 email with 'invoice' in the subject" — it
+is the wrong instrument: loading the consolidated CSV costs hundreds of MB and
+tens of seconds every time. There is a SQLite index with FTS5 for that.
+
+```bash
+python -m gmail_bulk_export.core.load_metadatas --also-parquet
+python -m gmail_bulk_export.scripts.build_search_index   # writes output/search_index.sqlite3
+```
+
+Each query then takes milliseconds:
+
+```bash
+# free text (subject + snippet + sender + recipients)
+python -m gmail_bulk_export.scripts.search_emails -q "hotel madrid" --since 2023-01 --until 2023-06
+
+# by subject, in one mailbox, first 100
+python -m gmail_bulk_export.scripts.search_emails --subject invoice --mailbox desk@example.com -n 100
+
+# by customer domain, with an attachment, exported to CSV
+python -m gmail_bulk_export.scripts.search_emails --domain acme.com --with-attachment     --out output/acme.csv
+
+# by label, counted per year instead of listed
+python -m gmail_bulk_export.scripts.search_emails --label "Assigned/Jane" --breakdown year
+
+# the whole thread behind a hit, oldest first
+python -m gmail_bulk_export.scripts.search_emails --thread 18f2a1b3c4d5e6f7 --order date-asc
+```
+
+`--help` lists every option. What is worth knowing up front:
+
+| | |
+| --- | --- |
+| **Text** | `-q`, `--subject`, `--from`, `--to` go through FTS5: they **ignore accents and case** ("peticion" finds "petición") and match **whole words**. `invoic*` is a prefix search; `--contains` is a literal substring, accent-aware and slower |
+| **Dates** | `2023`, `2023-05`, `2023-05-17`, `17/05/2023` or `2023-05-17 08:45`. `--until` is **inclusive**: `--until 2023-05` reaches 31 May. Read in local time; `--utc` switches both input and output |
+| **Repeatable** | `--mailbox`, `--label`, `--domain`, `--delivered-to`, `--id` are **OR within the field** and **AND across fields** |
+| **Labels** | `--label` matches the **name**, not `Label_1234`: the index resolves them with **each mailbox's** `labels.csv` (ids are per mailbox). Needs phase 1 |
+| **Phase 3** | `--for-payloads` writes an `id,mailbox,date` CSV that `gmail-bulk-export payloads --csv-file` reads as-is (§ 6) |
+| **Output** | `--format table\|csv\|json\|jsonl\|ids`, `--out FILE`, `--fields`, `--count`, `--breakdown mailbox\|year\|month\|domain\|deliveredTo`. With `--out` the format is inferred from the extension and **every** hit is exported, not the console's 50 |
+| **Attachments** | `--with-attachment` filters on `multipart/mixed`. That is a **signal**, not a fact: the metadata carries no attachment field |
+
+Two limits that come from what was downloaded, not from the index:
+
+- **Metadata only.** The searchable text is the subject and the `snippet` (the
+  first ~200 characters of the body). Searching inside bodies means downloading
+  phase 3 first.
+- **The index is a snapshot.** It is a rebuildable derivative: after downloading
+  new months, `python -m gmail_bulk_export.scripts.build_search_index --force`.
+
+---
+
 ## 9. `output/` structure
 
 ```
 output/
 ├── emails_with_mailboxes.csv      # consolidated (phase 2) — analysis input
 ├── emails_with_mailboxes.parquet  # optional typed copy (--also-parquet)
+├── search_index.sqlite3           # search index (§ 8 bis), a derivative
 ├── _last_metadata_run.json        # summary of the last run
 └── <mailbox>/
     ├── labels.csv                 # phase 1
@@ -343,7 +426,7 @@ Format notes:
   above. It's what shows up as `Too many concurrent requests`.
 - 1,200,000 units per minute per project.
 
-The token bucket in [core/rate_limit.py](../core/rate_limit.py) sets the
+The token bucket in [core/rate_limit.py](../src/gmail_bulk_export/core/rate_limit.py) sets the
 pace, and `gmail_retry` retries with exponential backoff and jitter **only**
 transient failures (429, 5xx, and 403-by-quota). A 404 or a permissions error
 fails immediately instead of burning 8 retries.

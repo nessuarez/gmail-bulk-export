@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 
-from core.csv_handler import read_email_ids_and_mailbox_from_csv
+from gmail_bulk_export.core.csv_handler import read_email_ids_and_mailbox_from_csv
 
 
 def write_csv(path: Path, headers, rows):

@@ -8,8 +8,9 @@ already-converted datetime column returns all-NaN, and the list parser returned
 """
 
 import pandas as pd
+import pytest
 
-from data_transforms import (
+from gmail_bulk_export.data_transforms import (
     transform_date_columns,
     transform_int_columns,
     transform_list_columns,
@@ -55,6 +56,17 @@ def test_list_conversion_is_idempotent():
 
     df = transform_list_columns(df, ["labelIds"])
     assert df["labelIds"].tolist() == [["INBOX", "UNREAD"], ["SENT"]]
+
+
+def test_list_conversion_survives_a_parquet_round_trip(tmp_path):
+    """A list column read back from Parquet is a numpy array, not a list."""
+    pytest.importorskip("pyarrow")
+    df = transform_list_columns(sample_df(), ["labelIds"])
+    path = tmp_path / "labels.parquet"
+    df[["labelIds"]].to_parquet(path, engine="pyarrow", index=False)
+
+    reloaded = transform_list_columns(pd.read_parquet(path), ["labelIds"])
+    assert reloaded["labelIds"].tolist() == [["INBOX", "UNREAD"], ["SENT"]]
 
 
 def test_list_conversion_survives_malformed_values():

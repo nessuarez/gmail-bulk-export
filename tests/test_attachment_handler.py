@@ -2,7 +2,7 @@ import email
 import gzip
 from pathlib import Path
 
-from core.attachment_handler import (
+from gmail_bulk_export.core.attachment_handler import (
     generate_attachment_file_path,
     get_filtered_attachments,
     save_attachments,

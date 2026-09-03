@@ -10,10 +10,10 @@ Each package also has its own file with that area's pitfalls:
 
 | Area | File |
 | --- | --- |
-| Gmail authentication | [`auth/CLAUDE.md`](../auth/CLAUDE.md) |
-| `gmail-bulk-export` subcommands | [`cli/CLAUDE.md`](../cli/CLAUDE.md) |
-| Rate limiting, checkpoints, CSV | [`core/CLAUDE.md`](../core/CLAUDE.md) |
-| Multi-mailbox orchestration | [`scripts/CLAUDE.md`](../scripts/CLAUDE.md) |
+| Gmail authentication | [`auth/CLAUDE.md`](../src/gmail_bulk_export/auth/CLAUDE.md) |
+| `gmail-bulk-export` subcommands | [`cli/CLAUDE.md`](../src/gmail_bulk_export/cli/CLAUDE.md) |
+| Rate limiting, checkpoints, CSV | [`core/CLAUDE.md`](../src/gmail_bulk_export/core/CLAUDE.md) |
+| Multi-mailbox orchestration | [`scripts/CLAUDE.md`](../src/gmail_bulk_export/scripts/CLAUDE.md) |
 | Tests | [`tests/CLAUDE.md`](../tests/CLAUDE.md) |
 
 Operational download guide: [`docs/RUNBOOK.md`](../docs/RUNBOOK.md).

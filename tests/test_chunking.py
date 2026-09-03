@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from scripts.chunking import (
+from gmail_bulk_export.scripts.chunking import (
     MonthChunk,
     clamp_to_today,
     iter_plan,

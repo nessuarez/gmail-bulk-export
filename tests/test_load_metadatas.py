@@ -11,7 +11,12 @@ import os
 import pandas as pd
 import pytest
 
-from core.load_metadatas import find_day_csvs, load_metadatas, main, to_parquet_typed
+from gmail_bulk_export.core.load_metadatas import (
+    find_day_csvs,
+    load_metadatas,
+    main,
+    to_parquet_typed,
+)
 
 FIELDNAMES = ["id", "threadId", "labelIds", "internalDate", "subject"]
 

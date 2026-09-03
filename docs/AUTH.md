@@ -6,7 +6,7 @@ impersonation. There is no interactive OAuth flow, no browser ever opens, and
 startup, and each mailbox is impersonated with
 `Credentials.with_subject(username)`.
 
-Implementation: [../auth/service.py](../auth/service.py).
+Implementation: [../auth/service.py](../src/gmail_bulk_export/auth/service.py).
 
 ## Why there's no OAuth consent screen
 
@@ -55,7 +55,7 @@ Read-only, on purpose. Widening the scope means re-authorizing here.
 ### 4. Verify
 
 ```bash
-python -m cli.main token
+python -m gmail_bulk_export.cli.main token
 ```
 
 Verifies that `client_secret.json` exists and is a valid service-account
@@ -63,7 +63,7 @@ JSON. **It does not check delegation** — for that you need to actually try
 impersonating a real mailbox:
 
 ```bash
-python -m scripts.download_metadata --mailboxes-file mailboxes.txt \
+python -m gmail_bulk_export.scripts.download_metadata --mailboxes-file mailboxes.txt \
     --start 2024-01 --end 2024-01 --dry-run
 ```
 
@@ -82,7 +82,7 @@ res = service.users().messages().list(userId="me", q="after:2024/01/01").execute
 Always use the `cached` variant inside loops or threads: `get_gmail_service`
 does a network `refresh()` plus a discovery build on every call. The cache is
 **per-thread** because the underlying `httplib2.Http` isn't thread-safe
-(detail in [../auth/CLAUDE.md](../auth/CLAUDE.md)).
+(detail in [../auth/CLAUDE.md](../src/gmail_bulk_export/auth/CLAUDE.md)).
 
 ## Pre-flight check before downloading
 
@@ -123,7 +123,7 @@ A 403 has two very different causes: **quota** (transient, retried) or
 ## Diagnostics
 
 ```bash
-python -m cli.main -v token
+python -m gmail_bulk_export.cli.main -v token
 ```
 
 `-v` raises logging to DEBUG on the console and in `logs/log_<UUID>.txt`.

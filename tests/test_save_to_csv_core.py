@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 
-from core.save_to_csv import save_emails_to_csv, save_labels_csv
+from gmail_bulk_export.core.save_to_csv import save_emails_to_csv, save_labels_csv
 
 
 def make_email_dict(id_val):
