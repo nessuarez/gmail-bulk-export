@@ -56,8 +56,8 @@ Priority: command-line arguments > environment variables (`.env`) >
 
 > **`batch_size` × `max_workers` is the number that matters.** Gmail limits
 > *concurrent* requests per user separately from the per-second quota. With
-> `100 × 5` you get mass `429 Too many concurrent requests` (in one test, 1030
-> of 2862 messages in a month). With `25 × 2` the real rate is ~37-42
+> `100 × 5` you get mass `429 Too many concurrent requests` (in one test, over
+> a third of a month's messages failed). With `25 × 2` the real rate is ~37-42
 > messages/s with zero failures. On 429s, lower `max_workers` first.
 
 ### Throughput: parallelize by mailbox, not by credential
@@ -75,7 +75,7 @@ Hence `--jobs` on `download_metadata`. By default it attacks every mailbox in
 the list in parallel.
 
 The token bucket is **per mailbox** (`pace(n, name=mailbox)`). Sharing a
-single global one would mean nine mailboxes in parallel throttle each other
+single global one would mean a dozen mailboxes in parallel throttle each other
 down to the rate of one, and the parallelism buys nothing.
 
 The final tail doesn't parallelize: once only the largest mailbox is left,
@@ -114,8 +114,8 @@ with a single command.
 ```bash
 python -m gmail_bulk_export.scripts.download_metadata \
     --mailboxes-file mailboxes.txt \
-    --start 2016-01 --end 2025-12 \
-    --priority 2024,2023,2025
+    --start 2023-01 --end 2024-12 \
+    --priority 2024
 ```
 
 What it does:
@@ -157,8 +157,8 @@ deduplicates).
 ### Long background runs
 
 ```bash
-python -u -m scripts.download_metadata --mailboxes-file mailboxes.txt \
-    --start 2016-01 --end 2025-12 --priority 2024,2023,2025 \
+python -u -m gmail_bulk_export.scripts.download_metadata --mailboxes-file mailboxes.txt \
+    --start 2023-01 --end 2024-12 --priority 2024 \
     > logs/full_run.log 2>&1 &
 
 # follow along
@@ -177,6 +177,9 @@ python -m gmail_bulk_export.scripts.progress_report                  # mailbox �
 python -m gmail_bulk_export.scripts.progress_report --detail          # + a list of what's pending
 python -m gmail_bulk_export.scripts.progress_report --start 2024-01 --end 2024-12
 ```
+
+With no `--start`/`--end`, the range is the span of day folders already
+in `output/` — the current year when there are none yet.
 
 ```
 mailbox                       labels  2024
@@ -334,7 +337,7 @@ Each query then takes milliseconds:
 
 ```bash
 # free text (subject + snippet + sender + recipients)
-python -m gmail_bulk_export.scripts.search_emails -q "hotel madrid" --since 2023-01 --until 2023-06
+python -m gmail_bulk_export.scripts.search_emails -q "quarterly report" --since 2023-01 --until 2023-06
 
 # by subject, in one mailbox, first 100
 python -m gmail_bulk_export.scripts.search_emails --subject invoice --mailbox desk@example.com -n 100
@@ -353,7 +356,7 @@ python -m gmail_bulk_export.scripts.search_emails --thread 18f2a1b3c4d5e6f7 --or
 
 | | |
 | --- | --- |
-| **Text** | `-q`, `--subject`, `--from`, `--to` go through FTS5: they **ignore accents and case** ("peticion" finds "petición") and match **whole words**. `invoic*` is a prefix search; `--contains` is a literal substring, accent-aware and slower |
+| **Text** | `-q`, `--subject`, `--from`, `--to` go through FTS5: they **ignore accents and case** ("resume" finds "résumé") and match **whole words**. `invoic*` is a prefix search; `--contains` is a literal substring, accent-aware and slower |
 | **Dates** | `2023`, `2023-05`, `2023-05-17`, `17/05/2023` or `2023-05-17 08:45`. `--until` is **inclusive**: `--until 2023-05` reaches 31 May. Read in local time; `--utc` switches both input and output |
 | **Repeatable** | `--mailbox`, `--label`, `--domain`, `--delivered-to`, `--id` are **OR within the field** and **AND across fields** |
 | **Labels** | `--label` matches the **name**, not `Label_1234`: the index resolves them with **each mailbox's** `labels.csv` (ids are per mailbox). Needs phase 1 |

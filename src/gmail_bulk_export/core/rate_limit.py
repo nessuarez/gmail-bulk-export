@@ -104,7 +104,7 @@ def is_retryable(exc: BaseException) -> bool:
 def _log_retry(retry_state):
     exc = retry_state.outcome.exception() if retry_state.outcome else None
     logger.warning(
-        "Reintento %d de %s tras %s",
+        "Retry %d of %s after %s",
         retry_state.attempt_number,
         retry_state.fn.__name__ if retry_state.fn else "?",
         exc,
@@ -146,7 +146,7 @@ def get_bucket(name: str = "gmail") -> TokenBucket:
             rate = float(get_config("messages_per_second", 40) or 40)
             bucket = TokenBucket(rate=rate, capacity=max(rate, 1.0))
             _buckets[name] = bucket
-            logger.info("Token bucket '%s' a %.1f mensajes/s", name, rate)
+            logger.info("Token bucket '%s' at %.1f messages/s", name, rate)
         return bucket
 
 

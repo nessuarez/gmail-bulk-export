@@ -90,7 +90,7 @@ def transform_list_columns(df, list_columns):
     return df
 
 
-# Mantener como texto las columnas de tipo string
+# Keep the string columns as text
 def transform_text_columns(df):
     text_columns = [
         "id",

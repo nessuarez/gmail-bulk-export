@@ -103,10 +103,11 @@ def cmd_payloads(args):
             values,
             args.allowed_attachment_types,
             save_attachment_files=getattr(args, "with_attachments", False),
+            overwrite=getattr(args, "overwrite", False),
         )
         print(
-            f"{mailbox}: {result['downloaded']} descargados, "
-            f"{result['skipped']} ya existían, {result['failed']} fallos"
+            f"{mailbox}: {result['downloaded']} downloaded, "
+            f"{result['skipped']} already there, {result['failed']} failures"
         )
 
     logger.info("Payload download completed")
@@ -176,7 +177,7 @@ Examples:
   %(prog)s token  # Verify service account credentials
 
 These operate on one mailbox and one date range, without checkpoints. For a real
-multi-mailbox backfill use the orchestrators: python -m scripts.download_metadata
+multi-mailbox backfill use the orchestrators: python -m gmail_bulk_export.scripts.download_metadata
         """,
     )
 
@@ -257,6 +258,15 @@ multi-mailbox backfill use the orchestrators: python -m scripts.download_metadat
         "--with-attachments",
         action="store_true",
         help="Also save attachment binaries next to each body (much more disk)",
+    )
+    parser_payloads.add_argument(
+        "--overwrite",
+        action="store_true",
+        help=(
+            "Re-download and replace bodies already on disk, instead of skipping "
+            "them — not the same as scripts/download_payloads.py's --force, which "
+            "ignores checkpoints rather than files"
+        ),
     )
     parser_payloads.set_defaults(func=cmd_payloads)
 

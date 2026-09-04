@@ -21,7 +21,7 @@ What it stores:
   the `email_labels` table so they can be filtered with an index.
 * An external-content FTS5 table over `subject`, `snippet`, `sender` and
   `recipients`, tokenized with `unicode61 remove_diacritics 2`: searching for
-  "peticion" finds "petición".
+  "resume" finds "résumé".
 
 Time zones: `internal_date` and `sent_at` are **UTC**, which is what the API
 returns. Converting to local time is the caller's business — `search_emails.py`
@@ -507,6 +507,32 @@ def format_timestamp(millis, utc=False, fmt="%Y-%m-%d %H:%M"):
     )
 
 
+_WINDOW_RE = re.compile(r"^(\d+(?:[.,]\d+)?)\s*([smhd])$", re.IGNORECASE)
+_WINDOW_UNITS = {"s": 1_000, "m": 60_000, "h": 3_600_000, "d": 86_400_000}
+
+
+def parse_window(text):
+    """`90s`, `45m`, `6h`, `2d` -> milliseconds. Used to pad `--around`."""
+    match = _WINDOW_RE.match(str(text).strip())
+    if not match:
+        raise ValueError(f"Unrecognized window: {text!r} (e.g. 90s, 45m, 6h, 2d)")
+    number, unit = match.groups()
+    return int(float(number.replace(",", ".")) * _WINDOW_UNITS[unit.lower()])
+
+
+def around_bounds(around, window, utc=False):
+    """`(since, until)` for `--around`: the period `around` names, padded by `window`.
+
+    `around` goes through `parse_date_bound` in both its modes, so the padding
+    behaves the same regardless of the precision typed: `--around 2024-03-14
+    --window 6h` pads the whole day, `--around "2024-03-14 09:32" --window 6h`
+    pads just that minute.
+    """
+    since = parse_date_bound(around, utc=utc) - window
+    until = parse_date_bound(around, end=True, utc=utc) + window
+    return since, until
+
+
 # ---------------------------------------------------------------------------
 # Querying
 # ---------------------------------------------------------------------------
@@ -544,7 +570,28 @@ FIELDS = {
     ),
 }
 
-DEFAULT_FIELDS = ["date", "mailbox", "from", "subject"]
+DEFAULT_FIELDS = ["date", "id", "mailbox", "deliveredTo", "from", "subject"]
+
+# Everything that helps identify a message and cross-reference it against the
+# consolidated CSV or another download phase. Does not fit in a table row — it
+# is what `--format detail` uses to print one block per message instead.
+DETAIL_FIELDS = [
+    "date",
+    "id",
+    "threadId",
+    "mailbox",
+    "deliveredTo",
+    "from",
+    "to",
+    "cc",
+    "subject",
+    "labels",
+    "snippet",
+    "sizeEstimate",
+    "hasAttachment",
+    "day",
+    "filePath",
+]
 
 ORDERS = {
     "date": "e.internal_date DESC",
@@ -687,7 +734,7 @@ def build_sql(query, select, order="date", limit=None, offset=0):
         params.append(query.thread)
     if query.labels:
         # Substring, not equality: real labels look like
-        # "@Assigned consultant/Jane Doe" and nobody wants to type that in full.
+        # "@Assigned/Jane Doe" and nobody wants to type that in full.
         condition = _match_any("l.label", query.labels, params, like=True)
         where.append(
             f"EXISTS (SELECT 1 FROM email_labels l WHERE l.email_rowid = e.rowid AND {condition})"
@@ -751,7 +798,7 @@ def breakdown(connection, query, dimension="mailbox"):
         raise ValueError(f"Unknown dimension: {dimension}")
     expression = expressions[dimension]
     sql, params = build_sql(query, f"{expression} AS bucket, COUNT(*) AS n", order=None)
-    # Time reads in order; domains and client aliases run to the hundreds and
+    # Time reads in order; domains and labels run to the hundreds and
     # what matters about them is who is on top.
     chronological = dimension in ("year", "month")
     sql += " GROUP BY bucket ORDER BY " + ("bucket" if chronological else "n DESC, bucket")

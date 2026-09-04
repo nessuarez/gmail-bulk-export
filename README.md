@@ -83,7 +83,7 @@ echo "user@example.com" > mailboxes.txt
 
 # phases 1 and 2: labels + metadata
 uv run python -m gmail_bulk_export.scripts.download_metadata --mailboxes-file mailboxes.txt \
-    --start 2016-01 --end 2025-12 --priority 2024,2023
+    --start 2023-01 --end 2024-12 --priority 2024
 
 # what's left?
 uv run python -m gmail_bulk_export.scripts.progress_report
@@ -149,8 +149,8 @@ SQLite + FTS5 index over the metadata.
 
 ```bash
 python -m gmail_bulk_export.core.load_metadatas --also-parquet
-python -m gmail_bulk_export.scripts.build_search_index          # ~1.4 min for 970k messages
-python -m gmail_bulk_export.scripts.search_emails -q "hotel madrid" --since 2023-01
+python -m gmail_bulk_export.scripts.build_search_index          # ~1.4 min for 970k messages in one deployment
+python -m gmail_bulk_export.scripts.search_emails -q "quarterly report" --since 2023-01
 ```
 
 Text search is accent- and case-insensitive; you can filter by date range,

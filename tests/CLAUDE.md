@@ -35,6 +35,7 @@ authenticating.
 | `test_data_transforms.py` | Idempotency of the shared dataframe transforms |
 | `test_checkpoints.py` | Saving/loading/clearing resumption state |
 | `test_save_to_csv*.py`, `test_csv_handler.py`, `test_file_handler.py`, `test_attachment_handler.py`, `test_utils.py` | I/O and helpers |
+| `test_no_domain_leaks.py` | That the repo stays generic and in English |
 
 ## Cases you must keep
 
@@ -50,6 +51,13 @@ refactor.
   `METADATA_FIELDNAMES` must not force re-downloading months already fetched.
 - **Idempotency in `test_data_transforms.py`** — downstream consumers may
   apply the same transform more than once.
+- **`test_no_domain_leaks.py`** — this engine was extracted from a private,
+  Spanish-language internal tool. The tests scan the whole tree for that
+  tool's business vocabulary, for non-ASCII in `.py` files, and for date
+  defaults that pin one deployment's backfill window. Two fixtures keep
+  accented text on purpose (`Résumé` exercises RFC 2047, `Zürich` the FTS5
+  diacritic folding); they are listed in `INTENTIONAL_NON_ASCII`. The
+  conventions being enforced are in [../CLAUDE.md](../CLAUDE.md).
 
 ## When adding tests
 

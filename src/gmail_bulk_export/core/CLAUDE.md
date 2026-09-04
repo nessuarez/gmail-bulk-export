@@ -85,7 +85,7 @@ the logic lives here, with no `argparse` and no network.
   by a label name returns another mailbox's messages.
 - **User text is quoted term by term** before reaching `MATCH`
   (`fts_expression`). A stray apostrophe or hyphen is FTS5 syntax: unquoted,
-  `l'hotel` does not find nothing, it breaks the query. `--raw-query` is the
+  `O'Brien` doesn't just find nothing, it breaks the query. `--raw-query` is
   escape hatch for anyone who wants that syntax.
 - **What is stored is UTC**; converting to local time is the caller's job. An
   index holding local time would depend on the machine that built it.

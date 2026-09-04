@@ -45,11 +45,11 @@ def get_users_label(username, output_dir=None, labelfilename="labels"):
         for label_name in detailed_labels():
             label_id = get_label_id(label_name, labels)
             if label_id is None:
-                # No todos los buzones tienen todas las etiquetas configuradas,
-                # y con una lista configurable la ausencia es lo normal. Antes
-                # se llamaba a la API con id=None: una petición que sólo servía
-                # para fallar y registrar un error engañoso.
-                logger.debug("El buzón no tiene la etiqueta %s; se omite", label_name)
+                # Not every mailbox has every configured label, and with a
+                # configurable list the absence is the normal case. This used to
+                # call the API with id=None: a request that could only fail and
+                # log a misleading error.
+                logger.debug("Mailbox has no %s label; skipping", label_name)
                 continue
             try:
                 label = service.users().labels().get(userId="me", id=label_id).execute()

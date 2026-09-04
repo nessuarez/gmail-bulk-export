@@ -4,14 +4,15 @@ A multi-hour backfill needs an answer to "what is still missing?" that does not
 depend on scrolling through logs. This walks the checkpoints and the CSVs on
 disk and prints a mailbox x month grid, plus whatever is left to retry.
 
-    python -m scripts.progress_report
-    python -m scripts.progress_report --start 2016-01 --end 2025-12 --detail
+    python -m gmail_bulk_export.scripts.progress_report
+    python -m gmail_bulk_export.scripts.progress_report --start 2023-01 --detail
 """
 
 import argparse
 import os
 import sys
 from collections import defaultdict
+from datetime import date
 
 from gmail_bulk_export.config import output_dir
 from gmail_bulk_export.core.checkpoints import load_checkpoint
@@ -65,6 +66,31 @@ def month_row_counts(mailbox):
     return counts, days
 
 
+def discover_month_range(mailboxes):
+    """The 'YYYY-MM' span actually on disk, for when --start/--end are omitted.
+
+    A generic engine has no business shipping one deployment's backfill
+    window as a default. With no data yet, the current year is as good a
+    guess as any.
+    """
+    months = set()
+    for mailbox in mailboxes:
+        base = os.path.join(output_dir(), mailbox)
+        if not os.path.isdir(base):
+            continue
+        # Day directories are named YYYY-MM-DD. The names alone give the span;
+        # counting the rows inside them would re-read the whole export.
+        months.update(
+            entry[:7]
+            for entry in os.listdir(base)
+            if len(entry) == 10 and os.path.isdir(os.path.join(base, entry))
+        )
+    if not months:
+        year = date.today().year
+        return f"{year}-01", f"{year}-12"
+    return min(months), max(months)
+
+
 def dead_letters(mailbox):
     """Pending per-message failures, keyed by dead-letter file."""
     directory = os.path.join(output_dir(), mailbox, ".checkpoints")
@@ -99,22 +125,24 @@ def run(args):
     else:
         mailboxes = discover_mailboxes()
     if not mailboxes:
-        print(f"No hay buzones con datos en {output_dir()}.")
+        print(f"No mailboxes with data in {output_dir()}.")
         return 1
 
-    end = clamp_to_today(args.end)
-    chunks = month_chunks(args.start, end)
+    default_start, default_end = discover_month_range(mailboxes)
+    start = args.start or default_start
+    end = clamp_to_today(args.end or default_end)
+    chunks = month_chunks(start, end)
     years = sorted({chunk.year for chunk in chunks})
 
-    print(f"Cobertura de metadata en {output_dir()}  ({args.start} → {end})")
+    print(f"Metadata coverage in {output_dir()}  ({start} → {end})")
     print(
-        f"  {MARK_DONE} completo   {MARK_PARTIAL} con fallos   "
-        f"{MARK_ERROR} error   {MARK_PENDING} pendiente\n"
+        f"  {MARK_DONE} complete   {MARK_PARTIAL} with failures   "
+        f"{MARK_ERROR} error   {MARK_PENDING} pending\n"
     )
 
     header = "  ".join(f"{year}" for year in years)
-    print(f"{'buzón':28s} {'labels':7s} {header}")
-    print(f"{'':28s} {'':7s} " + "  ".join("EFMAMJJASOND" for _ in years))
+    print(f"{'mailbox':28s} {'labels':7s} {header}")
+    print(f"{'':28s} {'':7s} " + "  ".join("JFMAMJJASOND" for _ in years))
 
     grand_total = 0
     totals_by_status = defaultdict(int)
@@ -137,28 +165,28 @@ def run(args):
                     mark = MARK_DONE
                 elif status == "partial":
                     mark = MARK_PARTIAL
-                    pending_work.append((mailbox, chunk.label, "fallos por mensaje"))
+                    pending_work.append((mailbox, chunk.label, "per-message failures"))
                 elif status == "error":
                     mark = MARK_ERROR
                     pending_work.append((mailbox, chunk.label, (state or {}).get("error", "error")))
                 else:
                     mark = MARK_PENDING
-                    pending_work.append((mailbox, chunk.label, "sin descargar"))
+                    pending_work.append((mailbox, chunk.label, "not downloaded"))
                 totals_by_status[mark] += 1
                 year_cells.append(mark)
             cells.append("".join(year_cells))
-        labels_mark = "sí" if labels_present(mailbox) else "NO"
+        labels_mark = "yes" if labels_present(mailbox) else "NO"
         print(f"{mailbox:28s} {labels_mark:7s} " + "  ".join(cells))
 
     print()
     total_chunks = sum(totals_by_status.values())
     print(
-        f"Chunks: {totals_by_status[MARK_DONE]}/{total_chunks} completos, "
-        f"{totals_by_status[MARK_PARTIAL]} con fallos, "
-        f"{totals_by_status[MARK_ERROR]} en error, "
-        f"{totals_by_status[MARK_PENDING]} pendientes"
+        f"Chunks: {totals_by_status[MARK_DONE]}/{total_chunks} complete, "
+        f"{totals_by_status[MARK_PARTIAL]} with failures, "
+        f"{totals_by_status[MARK_ERROR]} in error, "
+        f"{totals_by_status[MARK_PENDING]} pending"
     )
-    print(f"Filas de metadata en disco: {grand_total:,}")
+    print(f"Metadata rows on disk: {grand_total:,}")
 
     any_dead = False
     for mailbox in mailboxes:
@@ -166,32 +194,32 @@ def run(args):
         if letters:
             any_dead = True
             total = sum(letters.values())
-            print(f"\nDead-letter en {mailbox}: {total} mensajes")
+            print(f"\nDead-letter in {mailbox}: {total} messages")
             if args.detail:
                 for name, count in letters.items():
                     print(f"    {name}: {count}")
     if not any_dead:
-        print("Dead-letters: ninguno pendiente")
+        print("Dead-letters: none pending")
 
     if pending_work and args.detail:
-        print(f"\nPendiente ({len(pending_work)}):")
+        print(f"\nPending ({len(pending_work)}):")
         for mailbox, label, reason in pending_work[:60]:
             print(f"  {mailbox:28s} {label}  {reason}")
         if len(pending_work) > 60:
-            print(f"  ... y {len(pending_work) - 60} más")
+            print(f"  ... and {len(pending_work) - 60} more")
 
     return 0 if not pending_work else 2
 
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="progress_report", description="Cobertura de la descarga de metadata"
+        prog="progress_report", description="Coverage of the metadata download"
     )
-    parser.add_argument("--start", default="2016-01", help="Mes inicial YYYY-MM")
-    parser.add_argument("--end", default="2025-12", help="Mes final YYYY-MM")
-    parser.add_argument("--mailboxes", help="Lista separada por comas (por defecto: todos)")
-    parser.add_argument("--mailboxes-file", help="Fichero con un buzón por línea")
-    parser.add_argument("--detail", action="store_true", help="Listar lo pendiente")
+    parser.add_argument("--start", help="First month, YYYY-MM (default: the earliest on disk)")
+    parser.add_argument("--end", help="Last month, YYYY-MM (default: the latest on disk)")
+    parser.add_argument("--mailboxes", help="Comma-separated list (default: all)")
+    parser.add_argument("--mailboxes-file", help="File with one mailbox per line")
+    parser.add_argument("--detail", action="store_true", help="List what is still pending")
     return run(parser.parse_args())
 
 

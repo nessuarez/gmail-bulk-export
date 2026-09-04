@@ -43,7 +43,7 @@ def generate_email_file_path(
 
 
 def find_email_file(base_dir: str, message_id: str) -> Optional[str]:
-    """Busca el archivo JSON del email en subcarpetas del directorio base."""
+    """Finds the email's JSON file in the base directory's subfolders."""
     for root, _, files in os.walk(base_dir):
         if f"{message_id}.json" in files:
             return os.path.join(root, f"{message_id}.json")

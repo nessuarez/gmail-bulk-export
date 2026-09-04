@@ -35,7 +35,7 @@ quota. It's not the same as the rate:
 
 | Configuration | Measured result |
 | --- | --- |
-| `100 × 5` | Mass `429 Too many concurrent requests` — 1030 of 2862 messages failed in one month |
+| `100 × 5` | Mass `429 Too many concurrent requests` — over a third of a month's messages failed |
 | `25 × 2` | ~37-42 msg/s sustained, zero failures |
 
 On 429s, lower **`max_workers`** first. Raising `batch_size` doesn't
@@ -55,8 +55,8 @@ have to be requested **one request per label**. This list says which ones are
 worth spending that on.
 
 The default is just Gmail's standard labels — `INBOX`, `SENT`, `UNREAD`,
-`CHAT` — so the module doesn't carry anything specific to any organization.
-Add your own per deployment:
+`CHAT`. Any label of your own goes here rather than in the code.
+Add them per deployment:
 
 ```json
 "detailed_labels": ["INBOX", "SENT", "UNREAD", "CHAT", "MY_CUSTOM_LABEL"]
