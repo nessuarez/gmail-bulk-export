@@ -105,11 +105,11 @@ python -m gmail_bulk_export.scripts.search_emails -q "invoice" --since 2024 --br
 ```
 
 It is SQLite with an external-content FTS5 table, so no server and no
-dependency beyond the standard library. Over ~970,000 messages it builds in
-about 1.4 minutes and answers in ~0.2 s. Compared with rolling your own it also
-gives you accent-insensitive matching (`peticion` finds `petición`), label
-names resolved per mailbox, date/domain/attachment filters, CSV/JSON export and
-a bridge to the body downloader. Full option list in
+dependency beyond the standard library. In one deployment of ~970,000
+messages it builds in about 1.4 minutes and answers in ~0.2 s. Compared with
+rolling your own it also gives you accent-insensitive matching (`resume` finds
+`résumé`), label names resolved per mailbox, date/domain/attachment filters,
+CSV/JSON export and a bridge to the body downloader. Full option list in
 [RUNBOOK.md § 8 bis](RUNBOOK.md#8-bis-finding-specific-emails), or `--help`.
 
 Reach for a hand-rolled index only if you need something the built-in one does

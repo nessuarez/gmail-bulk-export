@@ -106,8 +106,8 @@ def cmd_payloads(args):
             overwrite=getattr(args, "overwrite", False),
         )
         print(
-            f"{mailbox}: {result['downloaded']} descargados, "
-            f"{result['skipped']} ya existían, {result['failed']} fallos"
+            f"{mailbox}: {result['downloaded']} downloaded, "
+            f"{result['skipped']} already there, {result['failed']} failures"
         )
 
     logger.info("Payload download completed")
@@ -177,7 +177,7 @@ Examples:
   %(prog)s token  # Verify service account credentials
 
 These operate on one mailbox and one date range, without checkpoints. For a real
-multi-mailbox backfill use the orchestrators: python -m scripts.download_metadata
+multi-mailbox backfill use the orchestrators: python -m gmail_bulk_export.scripts.download_metadata
         """,
     )
 

@@ -3,8 +3,8 @@
 Runs `gmail-bulk-export metadata` month by month, in-process, recording a checkpoint
 per (mailbox, month) so an interrupted run picks up exactly where it stopped.
 
-    python -m scripts.download_metadata --mailboxes-file mailboxes.txt \
-        --start 2016-01 --end 2025-12 --priority 2024,2023,2025
+    python -m gmail_bulk_export.scripts.download_metadata --mailboxes-file mailboxes.txt \
+        --start 2023-01 --end 2024-12 --priority 2024
 
 Design notes:
 
@@ -77,11 +77,11 @@ def verify_mailboxes(mailboxes: List[str]) -> List[str]:
                 usable.append(mailbox)
                 print(f"  ✓ {mailbox}")
             else:
-                print(f"  ✗ {mailbox} — autenticación rechazada, se omite")
+                print(f"  ✗ {mailbox} — authentication refused, skipping")
         except AuthenticationError as exc:
             print(f"  ✗ {mailbox} — {exc}", file=sys.stderr)
         except Exception as exc:  # noqa: BLE001 - a bad mailbox must not abort the roster
-            print(f"  ✗ {mailbox} — error inesperado: {exc}", file=sys.stderr)
+            print(f"  ✗ {mailbox} — unexpected error: {exc}", file=sys.stderr)
     return usable
 
 
@@ -100,27 +100,27 @@ def download_labels(mailbox: str) -> bool:
         if labels:
             print(f"  · labels: {len(labels)} → {labels_path}")
             return True
-        print(f"  · labels: ninguna etiqueta devuelta para {mailbox}")
+        print(f"  · labels: no labels returned for {mailbox}")
     except Exception as exc:  # noqa: BLE001
-        logger.error("No se pudieron descargar labels de %s: %s", mailbox, exc)
-        print(f"  · labels: ERROR para {mailbox}: {exc}", file=sys.stderr)
+        logger.error("Could not download labels for %s: %s", mailbox, exc)
+        print(f"  · labels: ERROR for {mailbox}: {exc}", file=sys.stderr)
     return False
 
 
 def run(args) -> int:
     mailboxes = read_mailboxes(args)
     if not mailboxes:
-        print("No hay buzones. Usa --mailboxes o --mailboxes-file.", file=sys.stderr)
+        print("No mailboxes. Use --mailboxes or --mailboxes-file.", file=sys.stderr)
         return 2
     if args.only:
         mailboxes = [mailbox for mailbox in mailboxes if mailbox == args.only]
         if not mailboxes:
-            print(f"'{args.only}' no está en la lista de buzones.", file=sys.stderr)
+            print(f"'{args.only}' is not in the mailbox list.", file=sys.stderr)
             return 2
 
     end = clamp_to_today(args.end)
     if end != args.end:
-        print(f"Fin ajustado de {args.end} a {end} (no se descargan meses futuros).")
+        print(f"End clamped from {args.end} to {end}; future months are not downloaded.")
 
     chunks = month_chunks(args.start, end)
     priority_years = (
@@ -128,37 +128,37 @@ def run(args) -> int:
     )
     chunks = order_by_priority(chunks, priority_years)
 
-    print(f"\nVerificando acceso a {len(mailboxes)} buzones:")
+    print(f"\nChecking access to {len(mailboxes)} mailboxes:")
     if args.skip_auth_check:
         usable = mailboxes
-        print("  (omitido por --skip-auth-check)")
+        print("  (skipped by --skip-auth-check)")
     else:
         usable = verify_mailboxes(mailboxes)
     if not usable:
-        print("\nNingún buzón accesible. Nada que hacer.", file=sys.stderr)
+        print("\nNo mailbox is reachable. Nothing to do.", file=sys.stderr)
         return 1
 
     plan = list(iter_plan(usable, chunks))
     jobs = args.jobs if args.jobs > 0 else len(usable)
     jobs = max(1, min(jobs, len(usable)))
     print(
-        f"\nPlan: {len(usable)} buzones x {len(chunks)} meses = {len(plan)} chunks"
-        f" ({args.start} → {end}, prioridad: {args.priority or 'ninguna'})"
+        f"\nPlan: {len(usable)} mailboxes x {len(chunks)} months = {len(plan)} chunks"
+        f" ({args.start} → {end}, priority: {args.priority or 'none'})"
     )
     print(
-        f"Paralelismo: {jobs} buzones a la vez. El cupo de Gmail (250 unidades/s) "
-        f"es por buzón, así que no compiten entre sí."
+        f"Parallelism: {jobs} mailboxes at a time. The Gmail quota (250 units/s) "
+        f"is per mailbox, so they do not compete with each other."
     )
 
     if args.dry_run:
         for mailbox, chunk in plan[:40]:
             state = load_checkpoint(mailbox, chunk.checkpoint_key(PHASE_METADATA))
-            status = (state or {}).get("status", "pendiente")
+            status = (state or {}).get("status", "pending")
             print(
                 f"  {mailbox:32s} {chunk.label}  [{status}]  {chunk.query_start}..{chunk.query_end}"
             )
         if len(plan) > 40:
-            print(f"  ... y {len(plan) - 40} más")
+            print(f"  ... and {len(plan) - 40} more")
         return 0
 
     totals = {"done": 0, "skipped": 0, "failed": 0, "messages": 0}
@@ -173,7 +173,7 @@ def run(args) -> int:
             return dict(totals)
 
     def process_mailbox(mailbox):
-        """Recorre en serie los meses de un buzón. Un buzón por hilo."""
+        """Walks a mailbox's months in series. One mailbox per thread."""
         labels_pending = True
         consecutive_failures = 0
 
@@ -202,8 +202,8 @@ def run(args) -> int:
 
             try:
                 result = fetch_email_metadata(mailbox, chunk.date_range)
-            except Exception as exc:  # noqa: BLE001 - un mes malo no tumba el buzón
-                logger.exception("Fallo el chunk %s %s", mailbox, chunk.label)
+            except Exception as exc:  # noqa: BLE001 - a bad month must not sink the mailbox
+                logger.exception("Chunk %s %s failed", mailbox, chunk.label)
                 print(f"    ERROR {mailbox} {chunk.label}: {exc}", file=sys.stderr)
                 save_checkpoint(
                     mailbox,
@@ -216,12 +216,12 @@ def run(args) -> int:
                 )
                 bump(failed=1)
                 consecutive_failures += 1
-                # El corte es por buzón: una credencial revocada en uno no debe
-                # abortar los otros ocho, que van perfectamente.
+                # The cut-off is per mailbox: one revoked credential must not
+                # abort the others, which are running perfectly.
                 if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
                     print(
-                        f"\n{mailbox}: {consecutive_failures} fallos consecutivos, "
-                        f"se abandona este buzón.",
+                        f"\n{mailbox}: {consecutive_failures} consecutive failures, "
+                        f"giving up on this mailbox.",
                         file=sys.stderr,
                     )
                     return
@@ -231,7 +231,7 @@ def run(args) -> int:
             processed = result.get("processed", 0)
             failed = result.get("failed", 0)
 
-            # Un chunk con mensajes perdidos queda incompleto para que se reintente.
+            # A chunk with lost messages stays incomplete so that it gets retried.
             status = "done" if failed == 0 else "partial"
             save_checkpoint(
                 mailbox,
@@ -250,8 +250,8 @@ def run(args) -> int:
             else:
                 bump(failed=1, messages=processed)
                 print(
-                    f"    {mailbox} {chunk.label}: {processed} mensajes, "
-                    f"{failed} fallos → se reintentará",
+                    f"    {mailbox} {chunk.label}: {processed} messages, "
+                    f"{failed} failures → will be retried",
                     flush=True,
                 )
 
@@ -262,15 +262,15 @@ def run(args) -> int:
             try:
                 future.result()
             except Exception as exc:  # noqa: BLE001
-                logger.exception("El buzón %s terminó con excepción", mailbox)
+                logger.exception("Mailbox %s ended with an exception", mailbox)
                 print(f"  {mailbox}: ERROR fatal — {exc}", file=sys.stderr)
             else:
-                print(f"  {mailbox}: terminado", flush=True)
+                print(f"  {mailbox}: finished", flush=True)
 
     elapsed = time.monotonic() - started_at
     print(
-        f"\nResumen: {totals['done']} chunks completos, {totals['skipped']} ya hechos, "
-        f"{totals['failed']} con fallos, {totals['messages']} mensajes nuevos, "
+        f"\nSummary: {totals['done']} chunks complete, {totals['skipped']} already done, "
+        f"{totals['failed']} with failures, {totals['messages']} new messages, "
         f"{elapsed / 60:.1f} min"
     )
     summary_path = os.path.join(output_dir(), "_last_metadata_run.json")
@@ -294,35 +294,32 @@ def run(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="download_metadata",
-        description="Descarga incremental y reanudable de metadata de Gmail",
+        description="Incremental, resumable Gmail metadata download",
     )
-    parser.add_argument("--mailboxes", help="Lista de buzones separada por comas")
-    parser.add_argument("--mailboxes-file", help="Fichero con un buzón por línea")
-    parser.add_argument("--start", default="2016-01", help="Mes inicial YYYY-MM")
-    parser.add_argument("--end", default="2025-12", help="Mes final YYYY-MM")
+    parser.add_argument("--mailboxes", help="Comma-separated mailbox list")
+    parser.add_argument("--mailboxes-file", help="File with one mailbox per line")
+    parser.add_argument("--start", required=True, help="First month, YYYY-MM")
+    parser.add_argument("--end", required=True, help="Last month, YYYY-MM")
     parser.add_argument(
         "--priority",
-        default="2024,2023,2025",
-        help="Años a descargar primero, separados por comas",
+        help="Years to download first, comma-separated",
     )
-    parser.add_argument("--only", help="Procesar solo este buzón de la lista")
+    parser.add_argument("--only", help="Process only this mailbox from the list")
     parser.add_argument(
         "--jobs",
         type=int,
         default=0,
         help=(
-            "Buzones en paralelo (0 = todos). El cupo de Gmail es por buzón, "
-            "así que esto multiplica el ritmo; más credenciales no."
+            "Mailboxes in parallel (0 = all). The Gmail quota is per mailbox, "
+            "so this multiplies the rate; more credentials do not."
         ),
     )
-    parser.add_argument(
-        "--force", action="store_true", help="Reprocesar chunks ya marcados como done"
-    )
-    parser.add_argument("--dry-run", action="store_true", help="Mostrar el plan sin descargar nada")
+    parser.add_argument("--force", action="store_true", help="Reprocess chunks already marked done")
+    parser.add_argument("--dry-run", action="store_true", help="Show the plan without downloading")
     parser.add_argument(
         "--skip-auth-check",
         action="store_true",
-        help="No verificar los buzones antes de empezar",
+        help="Do not verify the mailboxes before starting",
     )
     return parser
 

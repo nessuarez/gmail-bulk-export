@@ -114,7 +114,7 @@ def test_new_column_survives_an_older_day_csv(tmp_path):
     with open(day_dir / f"{DATE}_batch.csv", "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=FIELDNAMES + ["snippet"])
         writer.writeheader()
-        writer.writerow({**row("m2"), "snippet": "Estamos procesando tu petición"})
+        writer.writerow({**row("m2"), "snippet": "We are reviewing your résumé"})
 
     merged_path = merge_csv_files(str(day_dir), DATE)
     merged = read_csv(merged_path)
@@ -124,7 +124,7 @@ def test_new_column_survives_an_older_day_csv(tmp_path):
     assert "snippet" in header
 
     by_id = {r["id"]: r for r in merged}
-    assert by_id["m2"]["snippet"] == "Estamos procesando tu petición"
+    assert by_id["m2"]["snippet"] == "We are reviewing your résumé"
     # Rows written before the column existed simply have it empty.
     assert by_id["m1"]["snippet"] == ""
 

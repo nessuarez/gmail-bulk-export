@@ -1,17 +1,17 @@
 """Searches the exported metadata: by date, subject, sender, label...
 
-    python -m gmail_bulk_export.scripts.search_emails -q "hotel madrid" --since 2023-01
+    python -m gmail_bulk_export.scripts.search_emails -q "quarterly report" --since 2023-01
     python -m gmail_bulk_export.scripts.search_emails --subject invoice --mailbox a@example.com
     python -m gmail_bulk_export.scripts.search_emails --domain acme.com --with-attachment \
         --format csv --out output/acme.csv
     python -m gmail_bulk_export.scripts.search_emails --label "Assigned/Jane" --breakdown year
     python -m gmail_bulk_export.scripts.search_emails --thread 18f2a1b3c4d5e6f7 --order date-asc
     python -m gmail_bulk_export.scripts.search_emails --around "2024-03-14 09:32" --window 6h
-    python -m gmail_bulk_export.scripts.search_emails -q "hotel madrid" --format detail -n 3
+    python -m gmail_bulk_export.scripts.search_emails -q "quarterly report" --format detail -n 3
 
 Needs the index from `python -m gmail_bulk_export.scripts.build_search_index`.
 Text searches (`-q`, `--subject`, `--from`, `--to`) go through FTS5 and are
-**accent- and case-insensitive**: "peticion" finds "petición". They match whole
+**accent- and case-insensitive**: "resume" finds "résumé". They match whole
 words; `invoic*` searches by prefix and `--contains` by literal substring.
 
 Repeatable filters (`--mailbox`, `--label`, `--domain`, ...) are *or* within a

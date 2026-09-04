@@ -60,13 +60,13 @@ def message(**overrides):
             "labelIds": "['INBOX', 'Label_7']",
             "sizeEstimate": "12000",
             "internalDate": str(millis("2023-05-17 09:30")),
-            "deliveredTo": "client@example.com",
-            "subject": "Flight booking to Múnich",
-            "from": "Ana <ana@client.com>",
+            "deliveredTo": "desk-eu@example.com",
+            "subject": "Quarterly report from the Zürich office",
+            "from": "Dana <dana@acme.com>",
             "to": "desk@example.com",
             "date": "Wed, 17 May 2023 11:30:00 +0200",
             "contentType": "multipart/alternative; boundary=x",
-            "snippet": "We need a petición for a flight on Monday",
+            "snippet": "We need a résumé for the Monday review",
             "mailbox": "desk@example.com",
         }
     )
@@ -107,14 +107,14 @@ def index(tmp_path):
         message(
             id="m2",
             threadId="t1",
-            subject="RE: Flight booking to Múnich",
+            subject="RE: Quarterly report from the Zürich office",
             labelIds="['SENT']",
-            **{"from": "Agency <desk@example.com>"},
-            to="ana@client.com",
+            **{"from": "Example Desk <desk@example.com>"},
+            to="dana@acme.com",
             internalDate=str(millis("2023-05-17 10:00")),
             contentType="multipart/mixed; boundary=y",
             sizeEstimate="2500000",
-            snippet="Confirmed, the ticket is attached",
+            snippet="Confirmed, the document is attached",
             file_path="output/legacy.csv",
         ),
         message(
@@ -124,7 +124,7 @@ def index(tmp_path):
             labelIds="['INBOX', 'Label_7']",
             internalDate=str(millis("2024-01-31 23:30")),
             deliveredTo="other@example.com",
-            **{"from": "Luis <luis@othercustomer.com>"},
+            **{"from": "Robin <robin@globex.com>"},
             mailbox="desk2@example.com",
             file_path="output/desk2@example.com/2024-02-01/2024-02-01.csv",
         ),
@@ -135,7 +135,7 @@ def index(tmp_path):
         message(),
     ]
     labels = {
-        "desk@example.com": {"Label_7": "@Assigned/Ana Ruiz"},
+        "desk@example.com": {"Label_7": "@Assigned/Jane Doe"},
         "desk2@example.com": {"Label_7": "Pending"},
     }
     source = write_source(tmp_path, rows, labels)
@@ -161,13 +161,13 @@ def test_build_deduplicates_by_id_and_mailbox(index):
 
 
 def test_text_search_ignores_accents_and_case(connection):
-    hits = search(connection, Query(text="peticion MUNICH"), fields=["id"])
+    hits = search(connection, Query(text="resume ZURICH"), fields=["id"])
     assert {row["id"] for row in hits} == {"m1"}
 
 
 def test_subject_search_is_scoped_to_the_subject(connection):
-    # "petición" is only in the snippet, not in the subject.
-    assert search(connection, Query(subject="peticion"), fields=["id"]) == []
+    # "résumé" is only in the snippet, not in the subject.
+    assert search(connection, Query(subject="resume"), fields=["id"]) == []
     assert len(search(connection, Query(subject="invoice"), fields=["id"])) == 1
 
 
@@ -177,9 +177,9 @@ def test_prefix_search(connection):
 
 
 def test_contains_matches_a_literal_substring(connection):
-    # "ooking" is not a word: FTS would not find it, `contains` does.
-    assert search(connection, Query(text="ooking"), fields=["id"]) == []
-    assert len(search(connection, Query(contains="ooking to"), fields=["id"])) == 3
+    # "uarterly" is not a word: FTS would not find it, `contains` does.
+    assert search(connection, Query(text="uarterly"), fields=["id"]) == []
+    assert len(search(connection, Query(contains="uarterly report"), fields=["id"])) == 3
 
 
 def test_date_range_is_inclusive_on_both_ends(connection):
@@ -193,7 +193,7 @@ def test_date_range_is_inclusive_on_both_ends(connection):
 
 def test_label_filter_uses_the_name_of_that_mailbox(connection):
     # The same Label_7 is called something different in each mailbox.
-    assigned = search(connection, Query(labels=["Assigned/Ana"]), fields=["id", "mailbox"])
+    assigned = search(connection, Query(labels=["Assigned/Jane"]), fields=["id", "mailbox"])
     assert [(row["id"], row["mailbox"]) for row in assigned] == [("m1", "desk@example.com")]
 
     pending = search(connection, Query(labels=["Pending"]), fields=["id", "mailbox"])
@@ -218,7 +218,7 @@ def test_derived_columns(connection):
 
 
 def test_repeated_filters_are_or_within_a_field(connection):
-    assert count(connection, Query(domains=["client.com", "othercustomer.com"])) == 3
+    assert count(connection, Query(domains=["acme.com", "globex.com"])) == 3
 
 
 def test_wildcards_in_exact_filters(connection):
@@ -260,9 +260,9 @@ def test_breakdown_by_year(connection):
 
 def test_breakdown_by_domain_is_ordered_by_count(connection):
     assert breakdown(connection, Query(), "domain") == [
-        ("client.com", 2),
+        ("acme.com", 2),
         ("example.com", 1),
-        ("othercustomer.com", 1),
+        ("globex.com", 1),
     ]
 
 
@@ -374,7 +374,7 @@ def test_around_bounds_pads_the_period_the_precision_names(around, expected_sinc
 def test_fts_expression_quotes_user_text():
     # A stray apostrophe or hyphen is FTS5 syntax: unquoted, the query fails
     # outright rather than finding nothing.
-    assert fts_expression(Query(text="l'hotel -madrid")) == '("l\'hotel" AND "-madrid")'
+    assert fts_expression(Query(text="O'Brien -draft")) == '("O\'Brien" AND "-draft")'
     assert fts_expression(Query(subject='"company dinner" invoic*')) == (
         '{subject} : ("company dinner" AND "invoic"*)'
     )
@@ -450,7 +450,7 @@ def test_cli_writes_a_file(index, monkeypatch, capsys, tmp_path):
         "--db",
         str(db_path),
         "--domain",
-        "othercustomer.com",
+        "globex.com",
         "--format",
         "csv",
         "--out",
@@ -558,7 +558,7 @@ def test_cli_format_detail_prints_the_full_snippet(index, monkeypatch, capsys):
         monkeypatch, capsys, "--db", str(db_path), "--id", "m1", "--format", "detail"
     )
     assert code == 0
-    assert "snippet: We need a petición for a flight on Monday" in output.out
+    assert "snippet: We need a résumé for the Monday review" in output.out
 
 
 def test_cli_fields_plus_minus_adjusts_the_default(index, monkeypatch, capsys):

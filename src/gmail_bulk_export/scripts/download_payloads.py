@@ -1,18 +1,18 @@
 """Incremental download of email bodies (and optionally attachment binaries).
 
 Phase 3/4 of the pipeline. Reads the consolidated metadata produced by
-`python -m core.load_metadatas`, slices it by mailbox and month, and downloads
+`python -m gmail_bulk_export.core.load_metadatas`, slices it by mailbox and month, and downloads
 the bodies month by month with a checkpoint per unit — the same resumable shape
 as the metadata phase.
 
     # dry run: how much work is left, and how big it is
-    python -m scripts.download_payloads --year 2024 --dry-run
+    python -m gmail_bulk_export.scripts.download_payloads --year 2024 --dry-run
 
     # bodies only (recommended first pass)
-    python -m scripts.download_payloads --year 2024
+    python -m gmail_bulk_export.scripts.download_payloads --year 2024
 
     # bodies plus attachment binaries (much more disk)
-    python -m scripts.download_payloads --year 2024 --with-attachments
+    python -m gmail_bulk_export.scripts.download_payloads --year 2024 --with-attachments
 
 Bodies are written as `output/<mailbox>/<YYYY-MM-DD>/<msg_id>.jsonl.gz`, and
 attachments as `<msg_id>_attachments.gz` alongside them. Both are skipped if
@@ -62,7 +62,10 @@ CONSOLIDATED = os.path.join(output_dir(), "emails_with_mailboxes.csv")
 def load_index(path: str) -> pd.DataFrame:
     """Loads the consolidated metadata and derives the month partition key."""
     if not os.path.exists(path):
-        raise SystemExit(f"No existe {path}.\nEjecuta primero: python -m core.load_metadatas")
+        raise SystemExit(
+            f"{path} does not exist.\n"
+            "Run this first: python -m gmail_bulk_export.core.load_metadatas"
+        )
     wanted = {"id", "mailbox", "date", "internalDate"}
     df = pd.read_csv(path, dtype=str, usecols=lambda column: column in wanted)
     # internalDate (epoch ms) is unambiguous; the Date header is not always parseable.
@@ -103,25 +106,25 @@ def run(args) -> int:
     units = partition(df, years, mailboxes)
 
     if not units:
-        print("No hay nada que coincida con el filtro.")
+        print("Nothing matches the filter.")
         return 1
 
     total_messages = sum(len(v) for v in units.values())
     print(
-        f"{len(units)} unidades (buzón x mes), {total_messages:,} mensajes en el índice"
-        f"{' + adjuntos' if args.with_attachments else ''}"
+        f"{len(units)} units (mailbox x month), {total_messages:,} messages in the index"
+        f"{' + attachments' if args.with_attachments else ''}"
     )
 
     if args.dry_run:
         for (mailbox, month), messages in list(units.items())[:60]:
             state = load_checkpoint(mailbox, unit_key(month, args.with_attachments))
-            status = (state or {}).get("status", "pendiente")
+            status = (state or {}).get("status", "pending")
             print(f"  {mailbox:28s} {month}  {len(messages):6,} msgs  [{status}]")
         if len(units) > 60:
-            print(f"  ... y {len(units) - 60} unidades más")
+            print(f"  ... and {len(units) - 60} more units")
         print(
-            "\nEstimación muy aproximada: los cuerpos rondan 30-80 KB comprimidos por email"
-            f" → {total_messages * 55 / 1_000_000:.1f} GB para {total_messages:,} mensajes."
+            "\nVery rough estimate: bodies run 30-80 KB compressed per email"
+            f" → {total_messages * 55 / 1_000_000:.1f} GB for {total_messages:,} messages."
         )
         return 0
 
@@ -138,8 +141,8 @@ def run(args) -> int:
 
         elapsed = (time.monotonic() - started_at) / 60
         print(
-            f"[{index}/{len(units)}] {mailbox} {month} — {len(messages):,} mensajes "
-            f"[{totals['downloaded']} hechos, {elapsed:.0f} min]"
+            f"[{index}/{len(units)}] {mailbox} {month} — {len(messages):,} messages "
+            f"[{totals['downloaded']} done, {elapsed:.0f} min]"
         )
 
         try:
@@ -150,7 +153,7 @@ def run(args) -> int:
                 save_attachment_files=args.with_attachments,
             )
         except Exception as exc:  # noqa: BLE001 - one bad month must not kill the run
-            logger.exception("Fallo la unidad %s %s", mailbox, month)
+            logger.exception("Unit %s %s failed", mailbox, month)
             print(f"    ERROR: {exc}", file=sys.stderr)
             save_checkpoint(mailbox, key, {"status": "error", "error": str(exc)})
             continue
@@ -178,14 +181,14 @@ def run(args) -> int:
             },
         )
         print(
-            f"    {result['downloaded']} descargados, {result['skipped']} ya estaban, "
-            f"{result['failed']} fallos"
+            f"    {result['downloaded']} downloaded, {result['skipped']} already there, "
+            f"{result['failed']} failures"
         )
 
     elapsed = (time.monotonic() - started_at) / 60
     print(
-        f"\nResumen: {totals['downloaded']} descargados, {totals['skipped']} ya estaban, "
-        f"{totals['failed']} fallos, {elapsed:.1f} min"
+        f"\nSummary: {totals['downloaded']} downloaded, {totals['skipped']} already there, "
+        f"{totals['failed']} failures, {elapsed:.1f} min"
     )
     return 0 if totals["failed"] == 0 else 1
 
@@ -193,23 +196,23 @@ def run(args) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="download_payloads",
-        description="Descarga incremental de cuerpos de email (y adjuntos)",
+        description="Incremental download of email bodies (and attachments)",
     )
-    parser.add_argument("--index", default=CONSOLIDATED, help="CSV consolidado de metadata")
-    parser.add_argument("--year", help="Años a procesar, separados por comas (ej: 2024,2023)")
-    parser.add_argument("--mailbox", help="Buzones a procesar, separados por comas")
+    parser.add_argument("--index", default=CONSOLIDATED, help="Consolidated metadata CSV")
+    parser.add_argument("--year", help="Years to process, comma-separated (e.g. 2024,2023)")
+    parser.add_argument("--mailbox", help="Mailboxes to process, comma-separated")
     parser.add_argument(
         "--with-attachments",
         action="store_true",
-        help="Guardar también los binarios de los adjuntos",
+        help="Also save the attachment binaries",
     )
     parser.add_argument(
         "--all-attachment-types",
         action="store_true",
-        help="No filtrar adjuntos por MIME type",
+        help="Do not filter attachments by MIME type",
     )
-    parser.add_argument("--force", action="store_true", help="Reprocesar unidades ya hechas")
-    parser.add_argument("--dry-run", action="store_true", help="Mostrar el plan sin descargar")
+    parser.add_argument("--force", action="store_true", help="Reprocess units already done")
+    parser.add_argument("--dry-run", action="store_true", help="Show the plan without downloading")
     return run(parser.parse_args())
 
 

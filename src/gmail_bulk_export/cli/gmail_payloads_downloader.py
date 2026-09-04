@@ -125,7 +125,7 @@ def download_email_bodies(
     Returns:
         dict: {"downloaded": int, "skipped": int, "failed": int, "failures": list}
     """
-    logger.info(_(f"{username}: Iniciando descarga del cuerpo de {len(msg_ids)} emails"))
+    logger.info(_(f"{username}: starting body download for {len(msg_ids)} emails"))
 
     # Filter out already downloaded emails
     emails_to_download = []
@@ -137,10 +137,10 @@ def download_email_bodies(
             emails_to_download.append((msg_id, msg_date))
         else:
             skipped += 1
-            logger.debug(_(f"El archivo {file_path} ya existe. Omitiendo descarga."))
+            logger.debug(_(f"{file_path} already exists. Skipping download."))
 
     logger.info(
-        _(f"{username}: Emails a descargar: {len(emails_to_download)} (omitidos: {skipped})")
+        _(f"{username}: emails to download: {len(emails_to_download)} (skipped: {skipped})")
     )
 
     failures = []
@@ -175,7 +175,7 @@ def download_email_bodies(
         pbar.close()
 
     logger.info(
-        _(f"{username}: Descarga completada. {downloaded} descargados, {len(failures)} fallos")
+        _(f"{username}: download complete. {downloaded} downloaded, {len(failures)} failures")
     )
     return {
         "downloaded": downloaded,
@@ -210,12 +210,12 @@ def retrieve_emails_data(
          list[tuple[str, str, str | None]]: tuples of (email_id, mailbox, date).
     """
     retrieved_email_data: list[tuple[str, str, str | None]] = []
-    # Determinar cómo obtener los email_ids según los argumentos de entrada
+    # How to get the email_ids depends on which arguments were given
     if args.csv_file:
-        # Caso 1: Si se proporciona un archivo CSV, leer los IDs y mailbox desde el CSV
+        # Case 1: with a CSV file, read the IDs and mailbox from it
         retrieved_email_data = read_email_ids_and_mailbox_from_csv(args.csv_file)
     elif args.start_date and args.end_date and args.username:
-        # Caso 2: fechas + username, buscar los ficheros por ruta y extraer los IDs
+        # Case 2: dates + username, find the files by path and pull out the IDs
         start_date = date_parser.parse(args.start_date)
         end_date = date_parser.parse(args.end_date)
         date_range = [
@@ -232,9 +232,9 @@ def retrieve_emails_data(
                     read_email_ids_from_metadata_csv(csv_path, args.username)
                 )
             else:
-                logger.debug(_(f"No se encontró el archivo: {csv_path}"))
+                logger.debug(_(f"File not found: {csv_path}"))
     elif args.username and args.email_ids:
-        # Caso 3: Si se proporcionan username y email_ids, generar la tupla manualmente
+        # Case 3: with username and email_ids, build the tuples by hand
         retrieved_email_data = [(email_id, args.username, None) for email_id in args.email_ids]
     else:
         retrieved_email_data = []
@@ -245,25 +245,25 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=_("Gmail Email Body Downloader"))
     parser.add_argument(
         "--username",
-        help=_("Nombre de usuario para organizar la salida"),
+        help=_("Username the output is organised under"),
     )
-    parser.add_argument("--start_date", help="Fecha de inicio en formato YYYYMMDD")
-    parser.add_argument("--end_date", help="Fecha de fin en formato YYYYMMDD")
+    parser.add_argument("--start_date", help="Start date, YYYYMMDD")
+    parser.add_argument("--end_date", help="End date, YYYYMMDD")
     parser.add_argument(
         "--email_ids",
         nargs="+",
         required=False,
-        help=_("Lista de IDs de emails a descargar"),
+        help=_("List of email IDs to download"),
     )
     parser.add_argument(
         "--csv-file",
-        help=_("Archivo CSV con IDs de emails a descargar"),
+        help=_("CSV file with the email IDs to download"),
     )
     parser.add_argument(
         "--debug",
         action="store_true",
         default=False,
-        help=_("Activar modo de depuración"),
+        help=_("Enable debug mode"),
     )
     parser.add_argument(
         "--allowed_attachment_types",
@@ -280,7 +280,7 @@ if __name__ == "__main__":
             "application/vnd.ms-powerpoint",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         ],
-        help=_("Lista de tipos de adjuntos permitidos (ej: application/pdf image/png)"),
+        help=_("Allowed attachment MIME types (e.g. application/pdf image/png)"),
     )
 
     args = parser.parse_args()
@@ -299,19 +299,19 @@ if __name__ == "__main__":
     emails_info = retrieve_emails_data(args, logger)
 
     # Print number of emails to download
-    logger.info(_(f"Obteniendo {len(emails_info)} emails"))
+    logger.info(_(f"Fetching {len(emails_info)} emails"))
     if not emails_info:
-        logger.error(_("No se encontraron emails para descargar."))
+        logger.error(_("No emails found to download."))
         exit(1)
 
-    # Agrupamos los emails por mailbox
+    # Group the emails by mailbox
     email_ids_by_mailbox = {}
     for email_id, mailbox, date in emails_info:
         if mailbox not in email_ids_by_mailbox:
             email_ids_by_mailbox[mailbox] = []
         email_ids_by_mailbox[mailbox].append((email_id, date))
 
-    # Descargar el cuerpo de los emails para cada mailbox
+    # Download the bodies for each mailbox
     for mailbox, values in email_ids_by_mailbox.items():
-        logger.info(_(f"Descargando emails para el mailbox: {mailbox}"))
+        logger.info(_(f"Downloading emails for mailbox: {mailbox}"))
         download_email_bodies(mailbox, values, args.allowed_attachment_types)

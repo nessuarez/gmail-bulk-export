@@ -25,4 +25,4 @@ def test_parse_email_date_invalid_returns_unknown(caplog):
     result = parse_email_date("not a date", logger)
     assert result == "Unknown"
     # ensure we logged an info message about conversion error
-    assert any("Error al convertir la fecha" in rec.getMessage() for rec in caplog.records)
+    assert any("Could not convert the date" in rec.getMessage() for rec in caplog.records)

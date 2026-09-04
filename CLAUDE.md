@@ -161,6 +161,32 @@ happen again.
   `stdout`/`stderr` that everything in `scripts/` carries, or the Windows
   console will crash with `UnicodeEncodeError` the moment a subject line has
   an accent or emoji in it.
+- **English, everywhere**: code, comments, docstrings, `--help` strings and
+  console output. This engine was extracted from a Spanish-language internal
+  tool, and for a while the seams showed. If you catch yourself writing a
+  comment in another language, you are probably writing in the wrong repo:
+  anything that names a client, a consultant or one organization's workflow
+  belongs downstream, not here.
+- **One example universe.** Examples in docs, docstrings and fixtures all
+  draw on the same fictional cast, so that nothing in the repo hints at where
+  it came from. Reuse these rather than inventing new ones:
+
+  | Role | Use |
+  | --- | --- |
+  | The operator's own domain | `example.com` (`desk@example.com`, the alias `desk-eu@example.com`, a second mailbox `desk2@example.com`) |
+  | Third parties | `acme.com`, `globex.com` |
+  | People | `Jane Doe`, `Dana`, `Robin` |
+  | A label of one's own | `TRIAGED`; hierarchical, `@Assigned/Jane Doe` |
+  | Subject / body | `Quarterly report from the Zürich office`, `Résumé attached` |
+  | Search query | `-q "quarterly report"`, `--subject invoice` |
+
+  Three of these carry a **technical** requirement, so don't swap them for
+  plain ASCII: `Résumé` is what exercises RFC 2047 decoding, `resume` finding
+  `résumé` is what demonstrates `remove_diacritics 2`, and `O'Brien` is the
+  apostrophe that would be FTS5 syntax if the query weren't quoted.
+
+  [tests/test_no_domain_leaks.py](tests/test_no_domain_leaks.py) fails the
+  build if the old vocabulary comes back.
 - Python ≥3.10 in `pyproject.toml`; development runs on 3.13. Formatting and
   linting: **ruff only**, 100-char lines. `ruff format` replaces black, and
   the `I` rules replace isort — running both in parallel used to deadlock

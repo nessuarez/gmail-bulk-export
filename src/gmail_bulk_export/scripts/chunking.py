@@ -76,7 +76,7 @@ def parse_month(value: str) -> tuple:
         year_part, month_part = cleaned[:4], cleaned[4:]
     year, month = int(year_part), int(month_part)
     if not 1 <= month <= 12:
-        raise ValueError(f"Mes fuera de rango en '{value}'")
+        raise ValueError(f"Month out of range in '{value}'")
     return year, month
 
 
@@ -91,7 +91,7 @@ def month_chunks(start: str, end: str) -> List[MonthChunk]:
     end_year, end_month = parse_month(end)
 
     if (end_year, end_month) < (start_year, start_month):
-        raise ValueError(f"El rango {start}..{end} está invertido")
+        raise ValueError(f"Range {start}..{end} is inverted")
 
     chunks = []
     year, month = start_year, start_month

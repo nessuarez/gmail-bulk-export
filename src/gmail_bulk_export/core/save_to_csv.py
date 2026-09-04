@@ -57,7 +57,7 @@ def _read_rows(file_path):
                 return None, []
             return list(reader.fieldnames), list(reader)
     except (OSError, csv.Error) as exc:
-        logger.error("No se pudo leer %s: %s", file_path, exc)
+        logger.error("Could not read %s: %s", file_path, exc)
         return None, []
 
 
@@ -134,7 +134,7 @@ def merge_csv_files(path, date):
             try:
                 os.remove(os.path.join(path, temp_file))
             except OSError as exc:
-                logger.warning("No se pudo borrar el temporal %s: %s", temp_file, exc)
+                logger.warning("Could not delete the temporary file %s: %s", temp_file, exc)
 
     return merged_file_path
 

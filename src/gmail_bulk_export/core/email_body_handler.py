@@ -12,7 +12,7 @@ logger = get_app_logger()
 
 
 def decode_header_value(raw: Optional[str]) -> Optional[str]:
-    """RFC 2047 -> text: `=?UTF-8?Q?Confirmaci=C3=B3n?=` -> `Confirmación`.
+    """RFC 2047 -> text: `=?UTF-8?Q?R=C3=A9sum=C3=A9?=` -> `Résumé`.
 
     Headers untouched by `process_email_raw_response` before this change went
     straight from `msg.get(...)` into the JSONL, encoded-word and all — any
@@ -78,7 +78,7 @@ def extract_message_body_parts(
                     )
             except Exception as e:
                 logger.error(f"Error decoding part: {e}")
-    # Fallback: convertir html a texto si plain_body no está
+    # Fallback: turn the html into text when there is no plain body
     if not plain_body and html_body:
         plain_body = html2text.html2text(html_body)
     return plain_body, html_body

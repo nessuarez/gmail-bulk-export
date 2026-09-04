@@ -21,7 +21,7 @@ What it stores:
   the `email_labels` table so they can be filtered with an index.
 * An external-content FTS5 table over `subject`, `snippet`, `sender` and
   `recipients`, tokenized with `unicode61 remove_diacritics 2`: searching for
-  "peticion" finds "petición".
+  "resume" finds "résumé".
 
 Time zones: `internal_date` and `sent_at` are **UTC**, which is what the API
 returns. Converting to local time is the caller's business — `search_emails.py`
@@ -734,7 +734,7 @@ def build_sql(query, select, order="date", limit=None, offset=0):
         params.append(query.thread)
     if query.labels:
         # Substring, not equality: real labels look like
-        # "@Assigned consultant/Jane Doe" and nobody wants to type that in full.
+        # "@Assigned/Jane Doe" and nobody wants to type that in full.
         condition = _match_any("l.label", query.labels, params, like=True)
         where.append(
             f"EXISTS (SELECT 1 FROM email_labels l WHERE l.email_rowid = e.rowid AND {condition})"
@@ -798,7 +798,7 @@ def breakdown(connection, query, dimension="mailbox"):
         raise ValueError(f"Unknown dimension: {dimension}")
     expression = expressions[dimension]
     sql, params = build_sql(query, f"{expression} AS bucket, COUNT(*) AS n", order=None)
-    # Time reads in order; domains and client aliases run to the hundreds and
+    # Time reads in order; domains and labels run to the hundreds and
     # what matters about them is who is on top.
     chronological = dimension in ("year", "month")
     sql += " GROUP BY bucket ORDER BY " + ("bucket" if chronological else "n DESC, bucket")

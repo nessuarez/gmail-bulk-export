@@ -23,7 +23,7 @@ def parse_email_date(date: str, logger: logging.Logger) -> str:
         date_obj = date_parser.parse(date)
         date_str = date_obj.strftime("%Y-%m-%d")
     except (ValueError, TypeError) as e:
-        logger.info("Error al convertir la fecha: %s", e)
+        logger.info("Could not convert the date: %s", e)
         date_str = "Unknown"
     return date_str
 

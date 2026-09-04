@@ -8,7 +8,7 @@ in-process.
 All of them are invoked as a module from the repo root:
 
 ```bash
-python -m gmail_bulk_export.scripts.download_metadata --mailboxes-file mailboxes.txt --start 2016-01 --end 2025-12
+python -m gmail_bulk_export.scripts.download_metadata --mailboxes-file mailboxes.txt --start 2023-01 --end 2024-12   # --start/--end are required
 ```
 
 `python scripts/download_metadata.py` **fails**: the `config` and `core`
@@ -64,7 +64,9 @@ consequently the best-tested
 ## progress_report.py
 
 The answer to "what's missing?" without reading logs. Walks checkpoints and
-on-disk CSVs.
+on-disk CSVs. `--start`/`--end` are optional: `discover_month_range()` reads
+the span straight off the day-folder names, so a bare invocation covers
+exactly what has been downloaded, whatever deployment it is.
 
 ```text
 mailbox                      labels  2024

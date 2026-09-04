@@ -88,12 +88,12 @@ def _clear_dead_letter(username, date_range):
     if os.path.exists(path):
         try:
             os.remove(path)
-            logger.info("Dead-letter resuelto y eliminado: %s", path)
+            logger.info("Dead-letter resolved and removed: %s", path)
         except OSError as exc:
-            logger.warning("No se pudo borrar %s: %s", path, exc)
+            logger.warning("Could not delete %s: %s", path, exc)
 
 
-# Fase 1: Obtener solo metadata de emails
+# Phase 1: metadata only
 def fetch_email_metadata(username, date_range):
     """Fetches email metadata for a given date range and saves it to a CSV file.
 
@@ -103,7 +103,7 @@ def fetch_email_metadata(username, date_range):
     service = get_gmail_service(username)
 
     logger.info(
-        "%s: Iniciando análisis de emails desde %s hasta %s",
+        "%s: starting the email scan from %s to %s",
         username,
         date_range[0],
         date_range[1],
@@ -133,15 +133,14 @@ def fetch_email_messages(service, date_range, username):
     emails = response.get("messages", [])
     processed = 0
 
-    # disable=None => tqdm se calla si la salida no es una terminal. Con nueve
-    # buzones en paralelo escribiendo a un log, las barras lo hacían ilegible.
-    with tqdm(
-        total=len(emails), desc="Obteniendo mensajes", unit=" mensajes", disable=None
-    ) as pbar:
+    # disable=None => tqdm goes quiet when the output is not a terminal. With
+    # a dozen mailboxes writing to one log in parallel, the bars made it
+    # unreadable.
+    with tqdm(total=len(emails), desc="Fetching messages", unit=" messages", disable=None) as pbar:
         pbar.update(len(emails))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
-            # Procesar la primera página de mensajes
+            # Process the first page of messages
             futures.append(
                 executor.submit(
                     process_emails, service, emails, username, batch_size, collect_failures
@@ -173,7 +172,7 @@ def fetch_email_messages(service, date_range, username):
                 processed += sum(len(rows) for rows in emails_by_date.values())
 
         logger.info(
-            "%s: Procesados %d emails en total entre %s y %s (listados %d, fallos %d)",
+            "%s: processed %d emails in total between %s and %s (listed %d, failures %d)",
             username,
             processed,
             date_range[0],
@@ -189,7 +188,7 @@ def fetch_email_messages(service, date_range, username):
         dead_letter = _dead_letter_path(username, date_range)
         _record_failures(dead_letter, failures)
         logger.warning(
-            "%s: %d mensajes fallaron entre %s y %s. Registrados en %s",
+            "%s: %d messages failed between %s and %s. Recorded in %s",
             username,
             len(failures),
             date_range[0],
@@ -257,7 +256,7 @@ def _fetch_metadata_with_retries(
         round_failures = []
         with tqdm(
             total=len(pending),
-            desc="Obteniendo metadatos" if round_number == 0 else f"Reintento {round_number}",
+            desc="Fetching metadata" if round_number == 0 else f"Retry {round_number}",
             leave=False,
             disable=None,
         ) as pbar:
@@ -293,7 +292,7 @@ def _fetch_metadata_with_retries(
         if round_number < max_rounds - 1:
             backoff = min(2**round_number, 30) + random.uniform(0, 1)
             logger.info(
-                "%s: %d mensajes con rate limit, reintento %d en %.1fs",
+                "%s: %d rate-limited messages, retry %d in %.1fs",
                 username,
                 len(pending),
                 round_number + 1,
@@ -330,7 +329,7 @@ def batch_email_response_handler(
         retryable = is_retryable(exception)
         logger.log(
             logging.INFO if retryable else logging.WARNING,
-            "Error en la solicitud %s (%s): %s",
+            "Request %s failed (%s): %s",
             request_id,
             msg_id,
             exception,
@@ -378,11 +377,11 @@ def batch_email_response_handler(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gmail Bulk Export")
     parser.add_argument(
-        "--fase", choices=["metadata", "emails", "attachments"], help="Fase a ejecutar"
+        "--fase", choices=["metadata", "emails", "attachments"], help="Phase to run"
     )
-    parser.add_argument("--username", required=True, help="Nombre de usuario/email a descargar")
-    parser.add_argument("--start_date", help="Fecha de inicio en formato YYYYMMDD")
-    parser.add_argument("--end_date", help="Fecha de fin en formato YYYYMMDD")
+    parser.add_argument("--username", required=True, help="Username/email to download")
+    parser.add_argument("--start_date", help="Start date, YYYYMMDD")
+    parser.add_argument("--end_date", help="End date, YYYYMMDD")
 
     args = parser.parse_args()
 
@@ -390,6 +389,6 @@ if __name__ == "__main__":
 
     if args.fase == "metadata":
         if not args.start_date or not args.end_date:
-            print("Debes especificar start_date y end_date para la fase 1")
+            print("Phase 1 needs both --start_date and --end_date")
         else:
             fetch_email_metadata(args.username, (args.start_date, args.end_date))

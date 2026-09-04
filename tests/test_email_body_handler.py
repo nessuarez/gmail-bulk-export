@@ -18,27 +18,27 @@ def make_response(**overrides):
     `Delivered-To` headers, and both a plain and an HTML body part.
     """
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = Header("Confirmación de reserva", "utf-8").encode()
-    msg["From"] = "Agencia <reservas@agencia.com>"
-    msg["To"] = "cliente@example.com"
+    msg["Subject"] = Header("Résumé attached", "utf-8").encode()
+    msg["From"] = "Acme Billing <billing@acme.com>"
+    msg["To"] = "desk@example.com"
     msg["Date"] = "Wed, 17 May 2023 11:30:00 +0200"
-    msg["Message-ID"] = "<abc123@agencia.com>"
+    msg["Message-ID"] = "<abc123@acme.com>"
     # Two Delivered-To: the alias chain a forward/alias leaves behind, and
     # exactly what phase 2's metadata step collapses to just the last one.
-    msg["Delivered-To"] = "peticiones10@aervio.com"
-    msg["Delivered-To"] = "peticiones@aervio.com"
-    msg.attach(MIMEText("Confirmación de su reserva.", "plain", "utf-8"))
-    msg.attach(MIMEText("<p>Confirmación de su reserva.</p>", "html", "utf-8"))
+    msg["Delivered-To"] = "desk-eu@example.com"
+    msg["Delivered-To"] = "desk@example.com"
+    msg.attach(MIMEText("Résumé attached, see below.", "plain", "utf-8"))
+    msg.attach(MIMEText("<p>Résumé attached, see below.</p>", "html", "utf-8"))
 
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")
     response = {
         "id": "1952bd04b8165682",
         "threadId": "1952bd04b8165682",
-        "labelIds": ["INBOX", "AERVIO_OK"],
+        "labelIds": ["INBOX", "TRIAGED"],
         "internalDate": "1684315800000",
         "historyId": "998877",
         "sizeEstimate": 4096,
-        "snippet": "Confirmacion de su reserva.",
+        "snippet": "Resume attached, see below.",
         "raw": raw,
     }
     response.update(overrides)
@@ -46,12 +46,12 @@ def make_response(**overrides):
 
 
 def test_decode_header_value_handles_rfc2047():
-    encoded = Header("Confirmación", "utf-8").encode()
-    assert decode_header_value(encoded) == "Confirmación"
+    encoded = Header("Résumé", "utf-8").encode()
+    assert decode_header_value(encoded) == "Résumé"
 
 
 def test_decode_header_value_leaves_plain_ascii_alone():
-    assert decode_header_value("Booking confirmed") == "Booking confirmed"
+    assert decode_header_value("Plain ascii subject") == "Plain ascii subject"
 
 
 def test_decode_header_value_of_none_is_none():
@@ -60,58 +60,58 @@ def test_decode_header_value_of_none_is_none():
 
 def test_collect_headers_groups_repeated_headers_into_a_list():
     msg = MIMEMultipart()
-    msg["Delivered-To"] = "peticiones10@aervio.com"
-    msg["Delivered-To"] = "peticiones@aervio.com"
+    msg["Delivered-To"] = "desk-eu@example.com"
+    msg["Delivered-To"] = "desk@example.com"
     msg["Subject"] = "Single header"
 
     headers = collect_headers(msg)
 
-    assert headers["Delivered-To"] == ["peticiones10@aervio.com", "peticiones@aervio.com"]
+    assert headers["Delivered-To"] == ["desk-eu@example.com", "desk@example.com"]
     assert headers["Subject"] == "Single header"
 
 
 def test_process_email_raw_response_keeps_every_header():
-    email_data = process_email_raw_response(make_response(), mailbox="peticiones@aervio.com")
+    email_data = process_email_raw_response(make_response(), mailbox="desk@example.com")
 
     assert "headers" in email_data
     assert email_data["headers"]["Delivered-To"] == [
-        "peticiones10@aervio.com",
-        "peticiones@aervio.com",
+        "desk-eu@example.com",
+        "desk@example.com",
     ]
-    assert email_data["headers"]["From"] == "Agencia <reservas@agencia.com>"
+    assert email_data["headers"]["From"] == "Acme Billing <billing@acme.com>"
 
 
 def test_process_email_raw_response_decodes_the_subject():
     email_data = process_email_raw_response(make_response())
-    assert email_data["subject"] == "Confirmación de reserva"
+    assert email_data["subject"] == "Résumé attached"
 
 
 def test_process_email_raw_response_exposes_delivered_to_as_a_list():
     email_data = process_email_raw_response(make_response())
-    assert email_data["deliveredTo"] == ["peticiones10@aervio.com", "peticiones@aervio.com"]
+    assert email_data["deliveredTo"] == ["desk-eu@example.com", "desk@example.com"]
 
 
 def test_process_email_raw_response_carries_the_gmail_fields():
-    email_data = process_email_raw_response(make_response(), mailbox="peticiones@aervio.com")
+    email_data = process_email_raw_response(make_response(), mailbox="desk@example.com")
 
     assert email_data["gmailId"] == "1952bd04b8165682"
     assert email_data["threadId"] == "1952bd04b8165682"
-    assert email_data["mailbox"] == "peticiones@aervio.com"
+    assert email_data["mailbox"] == "desk@example.com"
     assert email_data["internalDate"] == "1684315800000"
-    assert email_data["labelIds"] == ["INBOX", "AERVIO_OK"]
+    assert email_data["labelIds"] == ["INBOX", "TRIAGED"]
     assert email_data["sizeEstimate"] == 4096
 
 
 def test_process_email_raw_response_id_is_still_the_rfc822_message_id():
     """`id` keeps its old meaning on purpose — `gmailId` is the additive field."""
     email_data = process_email_raw_response(make_response())
-    assert email_data["id"] == "<abc123@agencia.com>"
+    assert email_data["id"] == "<abc123@acme.com>"
 
 
 def test_process_email_raw_response_keeps_both_bodies():
     email_data = process_email_raw_response(make_response())
-    assert email_data["body_plain"] == "Confirmación de su reserva."
-    assert email_data["body_html"] == "<p>Confirmación de su reserva.</p>"
+    assert email_data["body_plain"] == "Résumé attached, see below."
+    assert email_data["body_html"] == "<p>Résumé attached, see below.</p>"
 
 
 def test_process_email_raw_response_falls_back_to_the_gmail_id_without_message_id():
