@@ -66,7 +66,9 @@ def process_email(
     try:
         response = _fetch_raw_message(service, msg_id, mailbox=username)
 
-        email_data: dict = process_email_raw_response(response, allowed_attachment_types)
+        email_data: dict = process_email_raw_response(
+            response, allowed_attachment_types, mailbox=username
+        )
 
         file_path = generate_email_file_path(
             username, msg_id, email_data.get("date", None), output_dir()
@@ -111,8 +113,14 @@ def download_email_bodies(
     allowed_attachment_types: list = None,
     *,
     save_attachment_files: bool = False,
+    overwrite: bool = False,
 ) -> dict:
     """Fetches the body of emails for a given user and saves them to a JSON file.
+
+    `overwrite=True` re-downloads and replaces bodies already on disk instead
+    of skipping them — needed once after a body schema change, since the skip
+    check is by file existence and cannot otherwise tell an old schema from a
+    current one.
 
     Returns:
         dict: {"downloaded": int, "skipped": int, "failed": int, "failures": list}
@@ -125,7 +133,7 @@ def download_email_bodies(
     for msg_id, msg_date in msg_ids:
         date_str = parse_email_date(msg_date, logger) if msg_date else None
         file_path = generate_email_file_path(username, msg_id, date_str, output_dir())
-        if not os.path.exists(file_path):
+        if overwrite or not os.path.exists(file_path):
             emails_to_download.append((msg_id, msg_date))
         else:
             skipped += 1

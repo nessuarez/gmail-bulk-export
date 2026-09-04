@@ -6,6 +6,8 @@
         --format csv --out output/acme.csv
     python -m gmail_bulk_export.scripts.search_emails --label "Assigned/Jane" --breakdown year
     python -m gmail_bulk_export.scripts.search_emails --thread 18f2a1b3c4d5e6f7 --order date-asc
+    python -m gmail_bulk_export.scripts.search_emails --around "2024-03-14 09:32" --window 6h
+    python -m gmail_bulk_export.scripts.search_emails -q "hotel madrid" --format detail -n 3
 
 Needs the index from `python -m gmail_bulk_export.scripts.build_search_index`.
 Text searches (`-q`, `--subject`, `--from`, `--to`) go through FTS5 and are
@@ -14,6 +16,17 @@ words; `invoic*` searches by prefix and `--contains` by literal substring.
 
 Repeatable filters (`--mailbox`, `--label`, `--domain`, ...) are *or* within a
 field and *and* across fields.
+
+`--around` takes the place of `--since`/`--until` when what you have is a
+single moment with some slack around it — a different time zone, a clock a few
+minutes off. It reads the same date formats as `--since`, padded by `--window`
+(default 6h) on both sides; it cannot be combined with `--since`/`--until`.
+
+`--format detail` prints one unabridged block per message instead of a table
+row — the only format where the full `snippet` is worth reading rather than
+truncated to fit a column. `--fields +col,-col` adds or removes columns from
+whichever default applies (add `+` to keep everything else); a plain
+comma-separated list still replaces it outright.
 
 Remember that only metadata is downloaded: the searchable text is the subject
 and the `snippet` (the first ~200 characters of the body), not the whole email.
@@ -31,15 +44,18 @@ from gmail_bulk_export.config import output_dir
 from gmail_bulk_export.core.search_index import (
     DEFAULT_FIELDS,
     DEFAULT_INDEX_NAME,
+    DETAIL_FIELDS,
     FIELDS,
     ORDERS,
     Query,
+    around_bounds,
     breakdown,
     count,
     format_timestamp,
     index_stats,
     open_index,
     parse_date_bound,
+    parse_window,
     search,
 )
 
@@ -81,6 +97,13 @@ def build_parser():
     filters = parser.add_argument_group("filters")
     filters.add_argument("--since", help="From: 2023, 2023-05, 2023-05-17, 17/05/2023")
     filters.add_argument("--until", help="To, inclusive (--until 2023-05 reaches 31 May)")
+    filters.add_argument("--around", help="A moment or period, padded by --window either side")
+    filters.add_argument(
+        "--window",
+        type=parse_window,
+        default="6h",
+        help="Padding for --around: 90s, 45m, 6h, 2d (default 6h)",
+    )
     filters.add_argument(
         "--mailbox", action="append", default=[], help="Mailbox (repeatable, accepts *)"
     )
@@ -109,10 +132,16 @@ def build_parser():
     out.add_argument(
         "--order", choices=sorted(ORDERS), default="date", help="Order (date by default)"
     )
-    out.add_argument("--fields", help=f"Comma-separated columns. Available: {', '.join(FIELDS)}")
+    out.add_argument(
+        "--fields",
+        help=(
+            "Comma-separated columns, or +col/-col to add/remove from the current "
+            f"default. Available: {', '.join(FIELDS)}"
+        ),
+    )
     out.add_argument(
         "--format",
-        choices=["table", "csv", "json", "jsonl", "ids"],
+        choices=["table", "csv", "json", "jsonl", "ids", "detail"],
         default=None,
         help="table by default; with --out it is inferred from the extension",
     )
@@ -165,7 +194,35 @@ def resolve_format(args):
     return "table"
 
 
+def apply_field_overrides(base_fields, spec):
+    """`--fields subject,snippet` replaces the field list; `--fields +snippet,-from`
+    adds/removes from `base_fields` instead — handy when the default is almost
+    right and typing it out in full is not worth it.
+    """
+    tokens = [token.strip() for token in spec.split(",") if token.strip()]
+    if not any(token.startswith(("+", "-")) for token in tokens):
+        return tokens
+    fields = list(base_fields)
+    for token in tokens:
+        if token.startswith("-"):
+            name = token[1:]
+            if name in fields:
+                fields.remove(name)
+        else:
+            name = token[1:] if token.startswith("+") else token
+            if name not in fields:
+                fields.append(name)
+    return fields
+
+
 def build_query(args):
+    if args.around and (args.since or args.until):
+        raise ValueError("--around cannot be combined with --since/--until")
+    if args.around:
+        since, until = around_bounds(args.around, args.window, utc=args.utc)
+    else:
+        since = parse_date_bound(args.since, utc=args.utc) if args.since else None
+        until = parse_date_bound(args.until, end=True, utc=args.utc) if args.until else None
     return Query(
         text=args.text,
         subject=args.subject,
@@ -173,8 +230,8 @@ def build_query(args):
         recipient=args.recipient,
         raw_query=args.raw_query,
         contains=args.contains,
-        since=parse_date_bound(args.since, utc=args.utc) if args.since else None,
-        until=parse_date_bound(args.until, end=True, utc=args.utc) if args.until else None,
+        since=since,
+        until=until,
         mailboxes=args.mailbox,
         delivered_to=args.delivered_to,
         domains=args.domain,
@@ -228,6 +285,16 @@ def print_table(rows, stream):
         print(line(row), file=stream)
 
 
+def print_detail(rows, stream):
+    """One `key: value` block per message, unabridged — the snippet included."""
+    label_width = max(len(name) for row in rows for name in row)
+    for index, row in enumerate(rows):
+        if index:
+            print(file=stream)
+        for name, value in row.items():
+            print(f"{name.rjust(label_width)}: {value if value is not None else ''}", file=stream)
+
+
 def write_output(rows, args, stream):
     if args.format == "ids":
         # Whichever single column `--fields` asked for, not necessarily `id`.
@@ -243,6 +310,8 @@ def write_output(rows, args, stream):
     elif args.format == "jsonl":
         for row in rows:
             print(json.dumps(row, ensure_ascii=False), file=stream)
+    elif args.format == "detail":
+        print_detail(rows, stream)
     else:
         print_table(rows, stream)
 
@@ -311,14 +380,28 @@ def run(args, connection):
     if args.for_payloads:
         # Exactly what the body downloader knows how to read.
         fields, args.format = PAYLOAD_FIELDS, "csv"
-    elif args.fields:
-        fields = [name.strip() for name in args.fields.split(",")]
-    elif args.format in ("csv", "json", "jsonl"):
-        # An export is read later, not glanced at: it deserves the columns that
-        # let it be joined with the rest of the analysis.
-        fields = ["date", "mailbox", "id", "threadId", "from", "to", "subject", "labels", "snippet"]
     else:
-        fields = DEFAULT_FIELDS
+        if args.format == "detail":
+            # One block per message, unabridged — the only format where the
+            # full snippet is worth reading rather than truncated in a column.
+            base_fields = DETAIL_FIELDS
+        elif args.format in ("csv", "json", "jsonl"):
+            # An export is read later, not glanced at: it deserves the columns
+            # that let it be joined with the rest of the analysis.
+            base_fields = [
+                "date",
+                "mailbox",
+                "id",
+                "threadId",
+                "from",
+                "to",
+                "subject",
+                "labels",
+                "snippet",
+            ]
+        else:
+            base_fields = DEFAULT_FIELDS
+        fields = apply_field_overrides(base_fields, args.fields) if args.fields else base_fields
 
     if args.format == "ids":
         # One column per line, to pipe into another command. If `--fields` was

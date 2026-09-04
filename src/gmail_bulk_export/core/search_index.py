@@ -507,6 +507,32 @@ def format_timestamp(millis, utc=False, fmt="%Y-%m-%d %H:%M"):
     )
 
 
+_WINDOW_RE = re.compile(r"^(\d+(?:[.,]\d+)?)\s*([smhd])$", re.IGNORECASE)
+_WINDOW_UNITS = {"s": 1_000, "m": 60_000, "h": 3_600_000, "d": 86_400_000}
+
+
+def parse_window(text):
+    """`90s`, `45m`, `6h`, `2d` -> milliseconds. Used to pad `--around`."""
+    match = _WINDOW_RE.match(str(text).strip())
+    if not match:
+        raise ValueError(f"Unrecognized window: {text!r} (e.g. 90s, 45m, 6h, 2d)")
+    number, unit = match.groups()
+    return int(float(number.replace(",", ".")) * _WINDOW_UNITS[unit.lower()])
+
+
+def around_bounds(around, window, utc=False):
+    """`(since, until)` for `--around`: the period `around` names, padded by `window`.
+
+    `around` goes through `parse_date_bound` in both its modes, so the padding
+    behaves the same regardless of the precision typed: `--around 2024-03-14
+    --window 6h` pads the whole day, `--around "2024-03-14 09:32" --window 6h`
+    pads just that minute.
+    """
+    since = parse_date_bound(around, utc=utc) - window
+    until = parse_date_bound(around, end=True, utc=utc) + window
+    return since, until
+
+
 # ---------------------------------------------------------------------------
 # Querying
 # ---------------------------------------------------------------------------
@@ -544,7 +570,28 @@ FIELDS = {
     ),
 }
 
-DEFAULT_FIELDS = ["date", "mailbox", "from", "subject"]
+DEFAULT_FIELDS = ["date", "id", "mailbox", "deliveredTo", "from", "subject"]
+
+# Everything that helps identify a message and cross-reference it against the
+# consolidated CSV or another download phase. Does not fit in a table row — it
+# is what `--format detail` uses to print one block per message instead.
+DETAIL_FIELDS = [
+    "date",
+    "id",
+    "threadId",
+    "mailbox",
+    "deliveredTo",
+    "from",
+    "to",
+    "cc",
+    "subject",
+    "labels",
+    "snippet",
+    "sizeEstimate",
+    "hasAttachment",
+    "day",
+    "filePath",
+]
 
 ORDERS = {
     "date": "e.internal_date DESC",

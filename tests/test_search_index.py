@@ -10,6 +10,7 @@ import pytest
 
 from gmail_bulk_export.core.search_index import (
     Query,
+    around_bounds,
     breakdown,
     build_index,
     count,
@@ -18,6 +19,7 @@ from gmail_bulk_export.core.search_index import (
     index_stats,
     open_index,
     parse_date_bound,
+    parse_window,
     search,
 )
 from gmail_bulk_export.scripts.search_emails import main as search_emails_main
@@ -335,6 +337,40 @@ def test_parse_date_bound_rejects_nonsense():
         parse_date_bound("last tuesday")
 
 
+@pytest.mark.parametrize(
+    "text, expected_ms",
+    [
+        ("90s", 90_000),
+        ("45m", 2_700_000),
+        ("6h", 21_600_000),
+        ("2d", 172_800_000),
+        ("1,5h", 5_400_000),
+    ],
+)
+def test_parse_window(text, expected_ms):
+    assert parse_window(text) == expected_ms
+
+
+def test_parse_window_rejects_nonsense():
+    with pytest.raises(ValueError):
+        parse_window("6")  # no unit
+
+
+@pytest.mark.parametrize(
+    "around, expected_since, expected_until",
+    [
+        # Minute precision: the window pads that one minute either side.
+        ("2023-05-17 09:30", "2023-05-17 03:30:00", "2023-05-17 15:30:59"),
+        # Day precision: the window pads the *whole day*, not just midnight.
+        ("2023-05-17", "2023-05-16 18:00:00", "2023-05-18 05:59:59"),
+    ],
+)
+def test_around_bounds_pads_the_period_the_precision_names(around, expected_since, expected_until):
+    since, until = around_bounds(around, parse_window("6h"), utc=True)
+    assert format_timestamp(since, utc=True, fmt="%Y-%m-%d %H:%M:%S") == expected_since
+    assert format_timestamp(until, utc=True, fmt="%Y-%m-%d %H:%M:%S") == expected_until
+
+
 def test_fts_expression_quotes_user_text():
     # A stray apostrophe or hyphen is FTS5 syntax: unquoted, the query fails
     # outright rather than finding nothing.
@@ -474,3 +510,70 @@ def test_cli_without_an_index_explains_how_to_build_it(tmp_path, monkeypatch, ca
     code, output = run_cli(monkeypatch, capsys, "--db", str(tmp_path / "nope.sqlite3"))
     assert code == 1
     assert "build_search_index" in output.err
+
+
+def test_cli_default_table_includes_id_and_delivered_to(index, monkeypatch, capsys):
+    """Both were reachable only via --format ids / --fields before this change."""
+    db_path, _ = index
+    code, output = run_cli(monkeypatch, capsys, "--db", str(db_path), "--id", "m3")
+    assert code == 0
+    header = output.out.splitlines()[0].split()
+    assert {"id", "deliveredTo"} <= set(header)
+    assert "other@example.com" in output.out
+
+
+def test_cli_around_finds_what_since_until_would(index, monkeypatch, capsys):
+    db_path, _ = index
+    code, output = run_cli(
+        monkeypatch,
+        capsys,
+        "--db",
+        str(db_path),
+        "--around",
+        "2023-05-17 09:45",
+        "--window",
+        "1h",
+        "--utc",
+        "--fields",
+        "id",
+        "--format",
+        "ids",
+    )
+    assert code == 0
+    assert set(output.out.split()) == {"m1", "m2"}
+
+
+def test_cli_around_rejects_since_and_until(index, monkeypatch, capsys):
+    db_path, _ = index
+    code, output = run_cli(
+        monkeypatch, capsys, "--db", str(db_path), "--around", "2023-05-17", "--since", "2023-01-01"
+    )
+    assert code == 2
+    assert "--around" in output.err
+
+
+def test_cli_format_detail_prints_the_full_snippet(index, monkeypatch, capsys):
+    db_path, _ = index
+    code, output = run_cli(
+        monkeypatch, capsys, "--db", str(db_path), "--id", "m1", "--format", "detail"
+    )
+    assert code == 0
+    assert "snippet: We need a petición for a flight on Monday" in output.out
+
+
+def test_cli_fields_plus_minus_adjusts_the_default(index, monkeypatch, capsys):
+    db_path, _ = index
+    code, output = run_cli(
+        monkeypatch,
+        capsys,
+        "--db",
+        str(db_path),
+        "--id",
+        "m3",
+        "--fields",
+        "+snippet,-from",
+    )
+    assert code == 0
+    header = output.out.splitlines()[0].split()
+    assert "snippet" in header
+    assert "from" not in header
